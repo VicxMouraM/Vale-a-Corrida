@@ -25,6 +25,22 @@ npx vite build --mode single --outDir dist-single   # um único index.html autoc
 
 O `dist/` pode ser publicado em qualquer hospedagem estática (Netlify, Vercel, GitHub Pages). No celular, use "Adicionar à tela inicial" para abrir como app.
 
+## Instalar no iPhone (e Android) como app
+
+O app é um PWA: instala pelo navegador, ganha ícone na tela de início, abre em tela cheia e funciona sem internet.
+
+1. Publique no GitHub Pages (uma vez só):
+   - Suba o projeto para o GitHub (`git push`).
+   - No repositório, vá em **Settings → Pages → Build and deployment → Source** e escolha **GitHub Actions**.
+   - Na aba **Actions**, espere o "Publicar no GitHub Pages" ficar verde (1 a 2 min). O link fica em `https://SEU-USUARIO.github.io/NOME-DO-REPOSITORIO/`.
+   - A cada novo `git push` na branch `main`, o site atualiza sozinho.
+2. No iPhone, abra o link **no Safari** (precisa ser o Safari).
+3. Toque em **Compartilhar** (quadrado com seta) → **Adicionar à Tela de Início** → **Adicionar**.
+
+No Android: abra no Chrome → menu ⋮ → **Instalar app**.
+
+Os dados ficam guardados no próprio celular, separados do Safari. Use **Ajustes → Backup** de vez em quando para não perder o histórico se apagar o app.
+
 ## Telas
 
 Cada informação aparece em um só lugar, e cada valor é editado em um só lugar.

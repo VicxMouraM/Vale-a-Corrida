@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Painel de carro à noite / asfalto de dia: neutros frios, acento azul-petróleo.
+   Verde/âmbar/vermelho ficam reservados ao semáforo da decisão. */
+:root {
+  --bg: 239 241 244;
+  --surface: 255 255 255;
+  --sunk: 230 233 238;
+  --line: 211 216 224;
+  --ink: 19 25 33;
+  --muted: 88 98 112;
+  --accent: 20 92 138;
+  --accent-ink: 255 255 255;
+  --good: 22 125 62;
+  --good-soft: 219 241 227;
+  --warn: 166 104 0;
+  --warn-soft: 251 239 204;
+  --bad: 190 38 38;
+  --bad-soft: 251 224 224;
+  --fuel: 20 92 138;
+  --wear: 118 82 196;
+  --fixed: 120 128 140;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: 13 17 22;
+    --surface: 21 27 35;
+    --sunk: 29 36 46;
+    --line: 46 55 68;
+    --ink: 230 235 241;
+    --muted: 150 160 174;
+    --accent: 98 172 222;
+    --accent-ink: 8 18 28;
+    --good: 82 214 128;
+    --good-soft: 18 56 35;
+    --warn: 245 196 40;
+    --warn-soft: 64 50 10;
+    --bad: 248 116 116;
+    --bad-soft: 70 24 24;
+    --fuel: 98 172 222;
+    --wear: 168 140 250;
+    --fixed: 140 150 164;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: 13 17 22;
+  --surface: 21 27 35;
+  --sunk: 29 36 46;
+  --line: 46 55 68;
+  --ink: 230 235 241;
+  --muted: 150 160 174;
+  --accent: 98 172 222;
+  --accent-ink: 8 18 28;
+  --good: 82 214 128;
+  --good-soft: 18 56 35;
+  --warn: 245 196 40;
+  --warn-soft: 64 50 10;
+  --bad: 248 116 116;
+  --bad-soft: 70 24 24;
+  --fuel: 98 172 222;
+  --wear: 168 140 250;
+  --fixed: 140 150 164;
+  color-scheme: dark;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
+  font-family: Barlow, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+h1, h2, h3 { text-wrap: balance; }
+.tnum { font-variant-numeric: tabular-nums; }
+.gutter {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.label-caps { text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; font-weight: 600; }
+input[type='number']::-webkit-inner-spin-button { display: none; }
+:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

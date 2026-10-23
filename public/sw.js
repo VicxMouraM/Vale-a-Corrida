@@ -21,6 +21,8 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   const sameOrigin = url.origin === self.location.origin;
   if (!sameOrigin && !FONT_HOSTS.includes(url.hostname)) return;
+  // Aviso de versão nova: sempre da rede, nunca do cache
+  if (url.pathname.endsWith('/version.json')) return;
   // Volta do login (Google/Apple/e-mail) traz um código na URL: sempre da rede
   if (req.mode === 'navigate' && (url.searchParams.has('code') || url.searchParams.has('token_hash'))) return;
   // Só a página do app vai para o cache como index.html; /termos/, /privacidade/ etc. seguem direto da rede

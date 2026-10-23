@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from './auth/AuthProvider';
 import { AccountScreen, STATUS_TEXT } from './components/AccountScreen';
 import { AuthScreen, NewPasswordScreen } from './components/AuthScreen';
+import { AvisoAtualizacao } from './components/AvisoAtualizacao';
 import { Calculator } from './components/Calculator';
 import { Goals } from './components/Goals';
 import { HelpScreen } from './components/HelpScreen';
@@ -439,6 +440,7 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
           ))}
         </nav>
       </div>
+      <AvisoAtualizacao acimaDaNav={!configurando} />
     </div>
   );
 }

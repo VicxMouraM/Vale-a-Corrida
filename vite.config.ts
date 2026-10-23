@@ -48,12 +48,26 @@ function csp(supabaseUrl: string | undefined, turnstile: boolean, adsense: boole
   };
 }
 
+/**
+ * Publica version.json com o commit desta versão. O app aberto consulta esse arquivo de tempos em tempos
+ * e, se mudou, oferece "Atualizar" (ver src/lib/atualizacao.ts). Sem VITE_VERSAO (build local), não gera.
+ */
+function versao(v: string | undefined): Plugin {
+  return {
+    name: 'versao',
+    apply: 'build',
+    generateBundle() {
+      if (v) this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ versao: v }) });
+    },
+  };
+}
+
 // `npm run build` gera a pasta dist/ normal.
 // `npx vite build --mode single` gera um único index.html autocontido (útil para abrir no celular offline, só modo convidado).
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
   return {
-    plugins: mode === 'single' ? [react(), viteSingleFile()] : [react(), csp(env.VITE_SUPABASE_URL, !!env.VITE_TURNSTILE_SITE_KEY, adsenseOn(env)), legalPages(), guia(), adsense(env.VITE_ADSENSE_CLIENT)],
+    plugins: mode === 'single' ? [react(), viteSingleFile()] : [react(), csp(env.VITE_SUPABASE_URL, !!env.VITE_TURNSTILE_SITE_KEY, adsenseOn(env)), legalPages(), guia(), adsense(env.VITE_ADSENSE_CLIENT), versao(env.VITE_VERSAO)],
     base: './',
     // Testes nunca falam com o Supabase de verdade, mesmo com .env.local preenchido
     test: { env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '', VITE_TURNSTILE_SITE_KEY: '' } },

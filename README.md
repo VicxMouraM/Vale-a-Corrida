@@ -121,6 +121,10 @@ Resultado: **58 ataques barrados, 0 falhas.**
 
 **O que nenhum app consegue barrar 100%:** uma pessoa com vários e-mails *reais e diferentes* (ex.: cinco contas do Gmail) ganha um teste em cada. As barreiras deixam isso caro e chato: captcha no cadastro, confirmação obrigatória por e-mail, lista de e-mails descartáveis, cota de prints reduzida no teste e, na hora de pagar, bloqueio por CPF e e-mail em caso de chargeback. O ganho de quem faz isso é só usar o Pro por 7 dias, sem custo relevante para o app.
 
+## 🚀 Aviso de versão nova
+
+A cada publicação, o GitHub Actions grava o commit em `version.json`. O app aberto confere esse arquivo ao voltar para a tela e a cada 15 minutos. Se mudou, mostra um aviso discreto acima da barra de baixo, com **Atualizar** e **Depois**. O aviso não bloqueia a tela, para não atrapalhar quem está avaliando uma oferta. Não precisa fazer nada: funciona sozinho a cada `git push`. Código em [src/lib/atualizacao.ts](src/lib/atualizacao.ts).
+
 ## 💬 Ajuda e feedback dos usuários
 
 O link **"Ajuda e feedback"** fica no rodapé de todas as telas (e em Ajustes → "Relatar um problema"). A pessoa escolhe:

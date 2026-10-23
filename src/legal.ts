@@ -12,7 +12,7 @@ export const LEGAL = {
   email: 'vicxmoura@gmail.com',
   cidade: 'São Paulo/SP',
   atualizadoEm: '23 de outubro de 2026',
-  versao: '2026-10-23.3',
+  versao: '2026-10-23.4',
 };
 
 export interface LegalSection {
@@ -99,13 +99,13 @@ export const PRIVACIDADE: LegalSection[] = [
       'Supabase (banco de dados e login), com servidores nos Estados Unidos; Asaas (cobrança); Google (somente se você escolher entrar com Google); GitHub Pages (hospedagem do app); API pública da tabela FIPE (consultas de marca, modelo e ano, sem dados pessoais).',
       'Transferência internacional: como o banco de dados fica nos Estados Unidos, seus dados são transferidos para fora do Brasil, com as garantias contratuais e de segurança do fornecedor (LGPD, art. 33).',
       'Não vendemos nem alugamos seus dados, e não os usamos para publicidade.',
-      'Anúncios (só no plano Grátis): os anúncios de patrocinadores são exibidos pelo próprio app, sem enviar dados seus ao anunciante. Ao tocar em um anúncio, você vai para o site do anunciante, que tem a própria política de privacidade. Se um dia usarmos o Google AdSense, os anúncios serão não personalizados e esta política será atualizada antes.',
+      'Anúncios (só no plano Grátis): os anúncios de patrocinadores são exibidos pelo próprio app, sem enviar dados seus ao anunciante. Ao tocar em um anúncio, você vai para o site do anunciante, que tem a própria política de privacidade. Também podemos exibir anúncios do Google AdSense, sempre não personalizados (sem uso do seu histórico de navegação para escolher o anúncio). Mesmo assim, o Google pode usar cookies para limitar repetições, medir resultados e combater fraudes; veja como em https://policies.google.com/technologies/ads.',
     ],
   },
   {
     titulo: '4. No seu aparelho',
     paragrafos: [
-      'O app guarda no navegador a sua sessão e uma cópia dos seus dados para funcionar sem internet. Não usamos cookies de rastreamento nem de publicidade. Ao sair da conta, a cópia dos dados da conta é apagada do aparelho.',
+      'O app guarda no navegador a sua sessão e uma cópia dos seus dados para funcionar sem internet. Nós não usamos cookies de rastreamento; no plano Grátis, os anúncios do Google podem usar cookies, como explicado acima. Ao sair da conta, a cópia dos dados da conta é apagada do aparelho.',
     ],
   },
   {

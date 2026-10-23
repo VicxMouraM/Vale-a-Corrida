@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ADS_MODE, ADSENSE_CLIENT, ADSENSE_SLOT, loadHouseAds, pickAd, type HouseAd } from '../lib/ads';
+import { ADS_MODE, ADSENSE_CLIENT, ADSENSE_ON, ADSENSE_SLOT, loadHouseAds, pickAd, type HouseAd } from '../lib/ads';
 import { usePlan } from '../lib/plan';
 
 /** Espaço de anúncio. Pro não vê nada. `slot` diferencia os espaços da mesma tela. */
 export function AdSlot({ slot }: { slot: number }) {
   const { plan, loading } = usePlan();
   if (plan.pro || loading || ADS_MODE === 'off') return null;
-  return ADS_MODE === 'adsense' ? <AdSense /> : <HouseAdCard slot={slot} />;
+  if (ADS_MODE === 'adsense') return ADSENSE_ON ? <AdSense /> : null;
+  // proprios: só patrocinadores; misto: patrocinador se houver, senão Google
+  return <HouseAdCard slot={slot} fallback={ADS_MODE === 'misto' && ADSENSE_ON ? <AdSense /> : null} />;
 }
 
 function Frame({ children }: { children: ReactNode }) {
@@ -24,8 +26,8 @@ function Frame({ children }: { children: ReactNode }) {
   );
 }
 
-function HouseAdCard({ slot }: { slot: number }) {
-  const [ad, setAd] = useState<HouseAd | null>(null);
+function HouseAdCard({ slot, fallback }: { slot: number; fallback: ReactNode }) {
+  const [ad, setAd] = useState<HouseAd | null | undefined>(undefined); // undefined = carregando
   useEffect(() => {
     let alive = true;
     // Sorteio novo a cada dia, diferente para cada espaço
@@ -35,7 +37,8 @@ function HouseAdCard({ slot }: { slot: number }) {
       alive = false;
     };
   }, [slot]);
-  if (!ad) return null;
+  if (ad === undefined) return null;
+  if (ad === null) return <>{fallback}</>;
   return (
     <Frame>
       {/* rel=sponsored: link pago; noopener/noreferrer: o site do anunciante não acessa o app nem sabe de onde veio */}
@@ -56,7 +59,7 @@ let adsenseLoaded = false;
 function AdSense() {
   const ref = useRef<HTMLModElement | null>(null);
   useEffect(() => {
-    if (!ADSENSE_CLIENT || !ADSENSE_SLOT) return;
+    if (!ADSENSE_ON) return;
     const w = window as unknown as { adsbygoogle?: unknown[] & { requestNonPersonalizedAds?: number } };
     w.adsbygoogle = w.adsbygoogle || [];
     w.adsbygoogle.requestNonPersonalizedAds = 1; // sem anúncios personalizados: não precisa de consentimento de rastreamento
@@ -74,7 +77,7 @@ function AdSense() {
       /* bloqueador de anúncios */
     }
   }, []);
-  if (!ADSENSE_CLIENT || !ADSENSE_SLOT) return null;
+  if (!ADSENSE_ON) return null;
   return (
     <Frame>
       <ins ref={ref} className="adsbygoogle block" style={{ display: 'block' }} data-ad-client={ADSENSE_CLIENT} data-ad-slot={ADSENSE_SLOT} data-ad-format="auto" data-full-width-responsive="true" />

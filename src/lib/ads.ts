@@ -8,14 +8,18 @@ import { supabase } from './supabase';
  *    Só texto, imagem e link; nenhum script de terceiros roda no app. É o modo seguro.
  *  - 'adsense': Google AdSense (exige domínio próprio e aprovação do Google). Roda um script do Google
  *    dentro do app, então a política de segurança (CSP) é afrouxada para ele.
+ *  - 'misto': patrocinador próprio quando houver um ativo; senão, Google AdSense.
  *  - 'off': sem anúncios.
  */
-export type AdsMode = 'proprios' | 'adsense' | 'off';
+export type AdsMode = 'proprios' | 'adsense' | 'misto' | 'off';
 
 const env = (import.meta.env.VITE_ADS as string | undefined)?.trim();
-export const ADS_MODE: AdsMode = env === 'adsense' || env === 'off' || env === 'proprios' ? env : supabase ? 'proprios' : 'off';
+export const ADS_MODE: AdsMode =
+  env === 'adsense' || env === 'off' || env === 'proprios' || env === 'misto' ? env : supabase ? 'proprios' : 'off';
 export const ADSENSE_CLIENT = (import.meta.env.VITE_ADSENSE_CLIENT as string | undefined) ?? '';
 export const ADSENSE_SLOT = (import.meta.env.VITE_ADSENSE_SLOT as string | undefined) ?? '';
+/** AdSense só liga com o ID do editor e do bloco preenchidos. */
+export const ADSENSE_ON = (ADS_MODE === 'adsense' || ADS_MODE === 'misto') && /^ca-pub-\d{10,20}$/.test(ADSENSE_CLIENT) && /^\d{5,20}$/.test(ADSENSE_SLOT);
 
 export interface HouseAd {
   id: number;

@@ -3,6 +3,8 @@ import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import { legalPages } from './scripts/legal-pages';
+import { adsense, adsenseOn } from './scripts/adsense';
+import { guia } from './scripts/guia';
 
 /** Domínios do Google AdSense (só entram na CSP com VITE_ADS=adsense). */
 const ADSENSE = [
@@ -51,7 +53,7 @@ function csp(supabaseUrl: string | undefined, turnstile: boolean, adsense: boole
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
   return {
-    plugins: mode === 'single' ? [react(), viteSingleFile()] : [react(), csp(env.VITE_SUPABASE_URL, !!env.VITE_TURNSTILE_SITE_KEY, env.VITE_ADS === 'adsense'), legalPages()],
+    plugins: mode === 'single' ? [react(), viteSingleFile()] : [react(), csp(env.VITE_SUPABASE_URL, !!env.VITE_TURNSTILE_SITE_KEY, adsenseOn(env)), legalPages(), guia(), adsense(env.VITE_ADSENSE_CLIENT)],
     base: './',
     // Testes nunca falam com o Supabase de verdade, mesmo com .env.local preenchido
     test: { env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '', VITE_TURNSTILE_SITE_KEY: '' } },

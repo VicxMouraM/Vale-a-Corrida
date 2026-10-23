@@ -210,8 +210,13 @@ Para conferir: `select * from cron.job_run_details order by start_time desc limi
 
 Aparecem só para quem não é Pro, na calculadora e no histórico, com a etiqueta "Anúncio" e o link "Remover anúncios com o Pro". Desligar: `ativo = false`.
 
-**Google AdSense (opcional):** exige domínio próprio e aprovação do Google. No GitHub (Variables): `VITE_ADS=adsense`, `VITE_ADSENSE_CLIENT=ca-pub-…`, `VITE_ADSENSE_SLOT=…`.
-> Atenção: o AdSense roda um script do Google dentro do app, e a política de segurança (CSP) é afrouxada para ele. Os anúncios próprios não têm esse custo.
+**Google AdSense (modo misto: patrocinador próprio primeiro, Google quando não houver):**
+1. Crie a conta em [adsense.google.com](https://adsense.google.com) com o site `valeacorrida.app.br`.
+2. No GitHub (**Settings → Secrets and variables → Actions → Variables**): `VITE_ADS=misto` e `VITE_ADSENSE_CLIENT=ca-pub-…` (o ID do editor). Publique de novo. O app passa a ter a meta tag `google-adsense-account` e o arquivo `https://valeacorrida.app.br/ads.txt`, que o Google usa para confirmar que o site é seu.
+3. No AdSense, peça a análise do site (leva de dias a algumas semanas). O guia público `/como-calcular/` existe para o site ter conteúdo próprio, que o Google exige.
+4. Depois de aprovado: **Anúncios → Por bloco de anúncios → Display** → copie o número do `data-ad-slot` e crie `VITE_ADSENSE_SLOT` no GitHub. Publique de novo.
+5. Não ligue os "Anúncios automáticos" do AdSense: o app já decide onde e para quem mostrar (nunca para o Pro).
+> O AdSense roda um script do Google dentro do app e a CSP é afrouxada para ele. Os anúncios próprios não têm esse custo.
 
 ### O que está protegido
 

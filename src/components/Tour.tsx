@@ -41,6 +41,14 @@ function find(target?: string): HTMLElement | null {
 export function Tour({ steps, onClose }: { steps: TourStep[]; onClose: () => void }) {
   const [i, setI] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  // Trava a rolagem da página de trás enquanto esta tela está aberta (no celular o fundo rolava junto)
+  useEffect(() => {
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = antes;
+    };
+  }, []);
   // pula passos cujo alvo não está na tela (ex.: sem resultado ainda)
   const step = steps[i];
 

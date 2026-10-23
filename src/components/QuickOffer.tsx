@@ -37,6 +37,14 @@ export function QuickOffer({
   const [txt, setTxt] = useState<Record<Campo, string>>({ valor: '', km: '', min: '' });
   const [ativo, setAtivo] = useState<Campo>('valor');
   const plataforma = activePlatform(s);
+  // Trava a rolagem da página de trás enquanto esta tela está aberta (no celular o fundo rolava junto)
+  useEffect(() => {
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = antes;
+    };
+  }, []);
 
   const num = (c: Campo) => {
     const n = parseNum(txt[c]);

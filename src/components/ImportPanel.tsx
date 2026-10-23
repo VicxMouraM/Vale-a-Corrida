@@ -386,7 +386,7 @@ export function ImportPanel({ s, existentes, onImport, onClose }: { s: Settings;
         </p>
       )}
 
-      <div className="mb-3 grid gap-3 text-sm">
+      <div className="mb-3 grid min-w-0 gap-3 text-sm [&>*]:min-w-0">
         <label className="flex flex-col gap-1">
           <span className="text-[13px] font-medium text-muted">Plataforma dessas corridas</span>
           <select
@@ -518,7 +518,7 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
   }
 
   return (
-    <div className="grid gap-3 text-sm">
+    <div className="grid min-w-0 gap-3 text-sm [&>*]:min-w-0">
       <label className={`cursor-pointer rounded-lg border-2 border-dashed border-line px-4 py-6 text-center font-semibold hover:bg-sunk ${lendo ? 'pointer-events-none opacity-60' : ''}`}>
         {lendo ? 'Lendo os prints… (uns 10 a 30 segundos)' : linhas ? `+ Adicionar mais prints (até ${MAX_PRINTS} por vez)` : `Escolher prints (até ${MAX_PRINTS} por vez)`}
         <input
@@ -559,50 +559,7 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
           <p className="mb-2 text-xs text-muted">
             Corrija o que a leitura errou. Campos em vermelho estão faltando: muitos apps não mostram km ou tempo na lista; abra a corrida no app para ver, ou desmarque a linha.
           </p>
-          <div className="overflow-x-auto">
-            <table className="tnum w-full min-w-[560px] text-xs">
-              <thead>
-                <tr className="border-b border-line text-left text-muted">
-                  <th className="py-1 pr-1">✓</th>
-                  <th className="py-1 pr-1">Data</th>
-                  <th className="py-1 pr-1">Hora</th>
-                  <th className="py-1 pr-1">Valor (R$)</th>
-                  <th className="py-1 pr-1">Km</th>
-                  <th className="py-1 pr-1">Min</th>
-                </tr>
-              </thead>
-              <tbody>
-                {linhas.map((l) => {
-                  const falta = l.incluir ? faltaNoRascunho(l) : [];
-                  const cls = (campo: string) =>
-                    `w-full rounded border bg-surface px-1.5 py-1 ${falta.includes(campo) ? 'border-bad' : 'border-line'} ${l.incluir ? '' : 'opacity-50'}`;
-                  return (
-                    <tr key={l.chave} className="border-b border-line/60">
-                      <td className="py-1 pr-1">
-                        <input type="checkbox" aria-label="Importar esta corrida" checked={l.incluir} onChange={(e) => mudar(l.chave, { incluir: e.target.checked })} />
-                        {l.cancelada && <span className="ml-1 text-[10px] text-bad">cancelada</span>}
-                      </td>
-                      <td className="py-1 pr-1">
-                        <input type="date" className={cls('data')} value={l.data} onChange={(e) => mudar(l.chave, { data: e.target.value })} />
-                      </td>
-                      <td className="py-1 pr-1">
-                        <input type="time" className={cls('hora')} value={l.hora} onChange={(e) => mudar(l.chave, { hora: e.target.value })} />
-                      </td>
-                      <td className="py-1 pr-1">
-                        <input inputMode="decimal" className={cls('valor')} value={l.valor} onChange={(e) => mudar(l.chave, { valor: e.target.value })} />
-                      </td>
-                      <td className="py-1 pr-1">
-                        <input inputMode="decimal" className={cls('km')} value={l.km} placeholder="?" onChange={(e) => mudar(l.chave, { km: e.target.value })} />
-                      </td>
-                      <td className="py-1 pr-1">
-                        <input inputMode="numeric" className={cls('minutos')} value={l.minutos} placeholder="?" onChange={(e) => mudar(l.chave, { minutos: e.target.value })} />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <RevisaoPrints linhas={linhas} mudar={mudar} />
           <ul className="mt-2 text-sm">
             <li>
               ✅ <strong>{pronto?.validas.length ?? 0}</strong> prontas para importar
@@ -628,5 +585,52 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
         </div>
       )}
     </div>
+  );
+}
+
+/** Conferência das corridas lidas nos prints: um cartão por corrida (cabe em qualquer celular). */
+export function RevisaoPrints({ linhas, mudar }: { linhas: Rascunho[]; mudar: (chave: string, patch: Partial<Rascunho>) => void }) {
+  return (
+    <ul className="grid min-w-0 gap-2">
+      {linhas.map((l, i) => {
+        const falta = l.incluir ? faltaNoRascunho(l) : [];
+        const campo = (nome: string) =>
+          `w-full min-w-0 appearance-none rounded-md border bg-surface px-2 py-1.5 text-sm ${falta.includes(nome) ? 'border-bad' : 'border-line'}`;
+        return (
+          <li key={l.chave} className={`min-w-0 rounded-lg border p-2.5 ${l.incluir ? 'border-line bg-surface' : 'border-line/60 bg-sunk opacity-60'}`}>
+            <label className="mb-2 flex items-center gap-2 text-sm font-semibold">
+              <input type="checkbox" checked={l.incluir} onChange={(e) => mudar(l.chave, { incluir: e.target.checked })} />
+              Corrida {i + 1}
+              {l.cancelada && <span className="rounded bg-bad-soft px-1.5 text-[11px] font-semibold text-bad">cancelada</span>}
+              {l.incluir && falta.length > 0 && <span className="ml-auto text-[11px] font-normal text-bad">falta: {falta.join(', ')}</span>}
+            </label>
+            {l.incluir && (
+              <div className="tnum grid grid-cols-2 gap-2 text-xs sm:grid-cols-5 [&>*]:min-w-0">
+                <label className="flex flex-col gap-0.5">
+                  <span className="text-muted">Data</span>
+                  <input type="date" className={campo('data')} value={l.data} onChange={(e) => mudar(l.chave, { data: e.target.value })} />
+                </label>
+                <label className="flex flex-col gap-0.5">
+                  <span className="text-muted">Hora</span>
+                  <input type="time" className={campo('hora')} value={l.hora} onChange={(e) => mudar(l.chave, { hora: e.target.value })} />
+                </label>
+                <label className="flex flex-col gap-0.5">
+                  <span className="text-muted">Valor (R$)</span>
+                  <input inputMode="decimal" className={campo('valor')} value={l.valor} onChange={(e) => mudar(l.chave, { valor: e.target.value })} />
+                </label>
+                <label className="flex flex-col gap-0.5">
+                  <span className="text-muted">Km</span>
+                  <input inputMode="decimal" className={campo('km')} value={l.km} placeholder="?" onChange={(e) => mudar(l.chave, { km: e.target.value })} />
+                </label>
+                <label className="col-span-2 flex flex-col gap-0.5 sm:col-span-1">
+                  <span className="text-muted">Tempo (min)</span>
+                  <input inputMode="numeric" className={campo('minutos')} value={l.minutos} placeholder="?" onChange={(e) => mudar(l.chave, { minutos: e.target.value })} />
+                </label>
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

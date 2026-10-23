@@ -289,8 +289,11 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
     goTab('historico');
   }
 
+  const configurando = settings.veiculos.length === 0; // assistente de primeiro uso na tela: sem navegação
+  const abaAtiva = overlay ? null : tab; // em Plano, Conta e Termos nenhuma aba fica marcada
+
   return (
-    <div className="min-h-screen pb-[calc(76px+env(safe-area-inset-bottom,0px))] sm:pb-10">
+    <div className={`min-h-screen sm:pb-10 ${configurando ? 'pb-6' : 'pb-[calc(76px+env(safe-area-inset-bottom,0px))]'}`}>
       <header className="sticky top-[env(safe-area-inset-top,0px)] z-20 border-b border-line bg-bg/90 backdrop-blur">
         <div className="gutter mx-auto flex max-w-6xl items-center justify-between gap-4 py-3">
           <div className="min-w-0">
@@ -299,15 +302,15 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
             </div>
             <div className="truncate text-xs text-muted">{settings.veiculos.length ? settings.veiculo.nome : 'Primeiros passos'}</div>
           </div>
-          <nav className="hidden gap-1 sm:flex" aria-label="Seções">
+          <nav className={`hidden gap-1 ${configurando ? '' : 'sm:flex'}`} aria-label="Seções">
             {TABS.map((t) => (
               <button
                 key={t.id}
                 data-tour={`nav-${t.id}`}
                 onClick={() => goTab(t.id)}
-                aria-current={tab === t.id ? 'page' : undefined}
+                aria-current={abaAtiva === t.id ? 'page' : undefined}
                 className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                  tab === t.id ? 'bg-accent text-accent-ink' : 'text-muted hover:bg-sunk hover:text-ink'
+                  abaAtiva === t.id ? 'bg-accent text-accent-ink' : 'text-muted hover:bg-sunk hover:text-ink'
                 }`}
               >
                 <Icon d={t.icon} />
@@ -392,7 +395,7 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
       </main>
 
       {/* Navegação inferior no celular */}
-      <div className="fixed inset-x-0 bottom-0 z-20 sm:hidden">
+      <div className={`fixed inset-x-0 bottom-0 z-20 sm:hidden ${configurando ? 'hidden' : ''}`}>
         <nav
           className="grid grid-cols-4 border-t border-line bg-surface pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]"
           aria-label="Seções"
@@ -402,8 +405,8 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
               key={t.id}
               data-tour={`nav-${t.id}`}
               onClick={() => goTab(t.id)}
-              aria-current={tab === t.id ? 'page' : undefined}
-              className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold ${tab === t.id ? 'text-accent' : 'text-muted'}`}
+              aria-current={abaAtiva === t.id ? 'page' : undefined}
+              className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold ${abaAtiva === t.id ? 'text-accent' : 'text-muted'}`}
             >
               <Icon d={t.icon} />
               {t.label}

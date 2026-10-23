@@ -27,6 +27,68 @@ Coisas que dependem de você, fora do código. Marque com `x` quando fizer.
 - [ ] **Supabase Pro (quando houver assinantes):** backups diários, sem pausa por inatividade e domínio próprio no login com Google. Avaliar criar o projeto já na região São Paulo.
 - [ ] **App Android com leitura automática das ofertas** (futuro): avaliar depois de ter usuários pagando.
 
+## 🔍 Revisão geral (23/10/2026)
+
+Feita antes da primeira semana de uso real. Tudo abaixo foi **verificado na prática** (banco consultado, servidor atacado de fora, app percorrido num navegador de teste), não só lido no código.
+
+### Segurança
+
+| Verificação | Resultado |
+|---|---|
+| RLS (regras de acesso) ligado nas 10 tabelas | ✅ |
+| Tabelas internas (auditoria, bloqueios, pagamentos, teste grátis) sem acesso pelo app | ✅ |
+| Privilégios mínimos: visitante só lê anúncios; logado só lê/grava as próprias corridas e ajustes | ✅ (corrigido nesta revisão: removidos TRUNCATE/TRIGGER/REFERENCES herdados do padrão, migração `0010`) |
+| Ataques de fora sem login: ler dados, criar anúncio, chamar funções internas, excluir conta | ✅ todos recusados |
+| Webhook do Asaas com token falso / rotina sem segredo | ✅ recusados (401) |
+| Funções do servidor só aceitam chamadas do site oficial (CORS) | ✅ |
+| HTTPS obrigatório, política de segurança (CSP), proteção contra iframe | ✅ |
+| Código sem HTML montado como texto, `eval` ou segredo; `.env.local` fora do Git | ✅ |
+| Dependências sem vulnerabilidades conhecidas (`npm audit`) | ✅ 0 |
+| Pagamento real de ponta a ponta (Pix → webhook → Pro liberado → cancelamento) | ✅ testado em produção |
+| Limites antifraude e de custo decididos no servidor (teste grátis, estornos, prints) | ✅ |
+
+### Fluxos e design
+
+Percorrido no celular (360px, tema claro e escuro) e no computador (1280px): assistente de primeiro uso, tutorial, calculadora, oferta rápida, registro, histórico, importação, metas, ajustes, plano, login e cadastro.
+
+| Verificação | Resultado |
+|---|---|
+| Nenhuma tela passa da largura do celular | ✅ 16 de 16 telas, nos 3 cenários |
+| Erros de JavaScript | ✅ nenhum |
+| Conferência dos prints em cartões (320, 360 e 414px) | ✅ |
+| Contraste no tema escuro | ✅ legível |
+
+Ajustes feitos nesta revisão:
+- Barra de navegação escondida durante o assistente de primeiro uso (antes, tocar em "Histórico" parecia travar).
+- Nenhuma aba marcada nas telas de Plano, Conta e Termos.
+- Link "← Voltar às plataformas" no passo do veículo.
+
+### Limitações conhecidas (para decidir depois)
+- **Login com Google** mostra o endereço técnico do Supabase ("Prosseguir para fdww…supabase.co"). Resolve com Supabase Pro + domínio próprio.
+- **Banco nos EUA** (região us-east-2). A Política de privacidade já informa; migrar para São Paulo exige projeto novo.
+- **Importação por planilha** testada com arquivos de exemplo; o formato real de cada plataforma pode exigir ajuste.
+- **Lucro de corridas importadas** usa os custos atuais do veículo, mesmo para corridas antigas.
+- **Custo real da leitura por print** ainda não medido (o registro começou agora).
+
+### 🗓️ Roteiro da semana de uso (anote o que achar)
+
+Use como motorista de verdade e anote aqui embaixo, com data, tudo que travar, confundir ou demorar:
+
+- [ ] Dia 1: criar uma conta nova (outro e-mail), passar pelo assistente e pelo tutorial no celular.
+- [ ] Todo dia: avaliar ofertas pela **⚡ Oferta rápida** e registrar as aceitas. Dá tempo nos ~15 segundos da oferta?
+- [ ] O semáforo bateu com a sua intuição? Alguma corrida "verde" que na verdade não valeu?
+- [ ] Conferir em **Ajustes** consumo, preço do combustível e manutenção do seu carro. Os valores típicos estavam perto da realidade?
+- [ ] No fim da semana: o **Histórico** mostra um lucro parecido com o que sobrou de verdade no bolso?
+- [ ] Importar um print do histórico de alguma plataforma e conferir a leitura.
+- [ ] Mandar o link para 2 ou 3 motoristas e anotar as dúvidas deles.
+
+**Anotações da semana:**
+- _(escreva aqui)_
+
+### 📣 Texto para indicar o app
+
+> Você sabe quanto sobra de verdade em cada corrida? O **Vale a Corrida?** calcula na hora o lucro real de cada oferta da Uber, 99, iFood, Lalamove e outros: desconta combustível, manutenção e desgaste do carro e mostra 🟢 vale a pena, 🟡 lucro baixo ou 🔴 prejuízo. É grátis e funciona no celular como app: https://valeacorrida.app.br
+
 ## 💸 Custo da leitura por print (decisão de 23/10/2026)
 
 | | Grátis | Pro |

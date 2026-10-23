@@ -137,15 +137,20 @@ export function Onboarding({ s, setSettings }: { s: Settings; setSettings: (s: S
             }}
             onCancel={() => setPasso(0)}
           />
-          <button
-            className="mt-3 text-sm font-semibold text-muted hover:text-ink"
-            onClick={() => {
-              setVeiculo(buildVehicle({ nome: 'Meu carro', tipo: 'popular', automatico: false, blindado: false }));
-              setPasso(2);
-            }}
-          >
-            Pular: usar um carro popular de exemplo
-          </button>
+          <div className="mt-3 flex flex-wrap justify-between gap-2 text-sm font-semibold text-muted">
+            <button className="hover:text-ink" onClick={() => setPasso(0)}>
+              ← Voltar às plataformas
+            </button>
+            <button
+              className="hover:text-ink"
+              onClick={() => {
+                setVeiculo(buildVehicle({ nome: 'Meu carro', tipo: 'popular', automatico: false, blindado: false }));
+                setPasso(2);
+              }}
+            >
+              Pular: usar um carro popular de exemplo
+            </button>
+          </div>
         </Card>
       )}
 

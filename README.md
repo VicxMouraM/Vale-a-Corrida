@@ -15,7 +15,7 @@ Para ativar contas e pagamentos, siga [supabase/CONFIGURAR.md](supabase/CONFIGUR
 
 Coisas que dependem de você, fora do código. Marque com `x` quando fizer.
 
-- [ ] **Ligar a importação por print (leitura por IA).** O código está pronto e publicado; hoje o app mostra "Em breve" nessa aba.
+- [x] **Ligar a importação por print (leitura por IA).** Ligada em 23/10/2026 com US$ 5 de crédito e sem recarga automática. Trocar a chave antes de ela expirar (ver data em console.anthropic.com → API Keys).
   1. Em [console.anthropic.com](https://console.anthropic.com), coloque créditos em **Billing** e defina um **limite de gasto mensal** (ex.: US$ 20).
   2. Em **API Keys**, crie uma chave. Não cole em chat nem em arquivo do projeto.
   3. No terminal do VS Code: `npx supabase secrets set ANTHROPIC_API_KEY='sk-ant-...' --project-ref fdwwukyyzlnuwtahrwnn`

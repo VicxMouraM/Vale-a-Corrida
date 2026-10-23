@@ -86,7 +86,16 @@ export function NumField(props: {
   );
 }
 
-export function TextField(props: { label: string; value: string; onChange: (s: string) => void; id?: string; type?: string }) {
+export function TextField(props: {
+  label: string;
+  value: string;
+  onChange: (s: string) => void;
+  id?: string;
+  type?: string;
+  autoComplete?: string;
+  placeholder?: string;
+  inputMode?: 'text' | 'numeric' | 'tel' | 'email';
+}) {
   const auto = useId();
   const id = props.id ?? auto;
   return (
@@ -97,6 +106,9 @@ export function TextField(props: { label: string; value: string; onChange: (s: s
       <input
         id={id}
         type={props.type ?? 'text'}
+        autoComplete={props.autoComplete}
+        placeholder={props.placeholder}
+        inputMode={props.inputMode}
         className="w-full min-w-0 rounded-md border border-line bg-surface px-3 py-2 outline-none focus:border-accent"
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}

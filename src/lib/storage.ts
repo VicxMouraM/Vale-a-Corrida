@@ -25,19 +25,72 @@ function merge<T>(base: T, saved: unknown): T {
   return (typeof saved === typeof base ? saved : base) as T;
 }
 
+/** Normaliza dados vindos de qualquer lugar (aparelho, nuvem, backup) contra os padrões. */
+export function normalize(p: { settings?: unknown; offer?: unknown; history?: unknown }): Persisted {
+  const raw = p.settings as Partial<Settings> | undefined;
+  return {
+    settings: refreshExamples(merge(DEFAULT_SETTINGS, raw), raw?.exemplosVersao ?? (raw ? 1 : EXEMPLOS_VERSAO)),
+    offer: merge(EXAMPLE_OFFER, p.offer),
+    history: cleanHistory(p.history),
+  };
+}
+
+const NUM_FIELDS = ['valor', 'bonus', 'km', 'minutos', 'despesas', 'taxas', 'precoLitro', 'kml', 'custoCombustivel', 'custoDesgaste', 'custoFixo', 'lucro'] as const;
+
+/** Descarta corridas malformadas (backup editado à mão, versão antiga) para não travar a sincronização. */
+export function cleanHistory(raw: unknown): HistoryEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const out: HistoryEntry[] = [];
+  const ids = new Set<string>();
+  for (const r of raw as Record<string, unknown>[]) {
+    if (!r || typeof r !== 'object') continue;
+    const id = typeof r.id === 'string' ? r.id.slice(0, 64) : '';
+    const data = typeof r.data === 'string' ? new Date(r.data) : null;
+    if (!id || ids.has(id) || !data || Number.isNaN(data.getTime())) continue;
+    if (r.combustivel !== 'gasolina' && r.combustivel !== 'etanol') continue;
+    const e: Record<string, unknown> = { id, data: data.toISOString(), combustivel: r.combustivel };
+    let ok = true;
+    for (const k of NUM_FIELDS) {
+      const v = r[k] ?? 0;
+      if (typeof v !== 'number' || !Number.isFinite(v) || Math.abs(v) >= 100000 || (k !== 'lucro' && v < 0)) ok = false;
+      e[k] = v;
+    }
+    if (!ok) continue;
+    if (typeof r.obs === 'string' && r.obs) e.obs = r.obs.slice(0, 500);
+    ids.add(id);
+    out.push(e as unknown as HistoryEntry);
+  }
+  return out;
+}
+
 export function load(): Persisted {
   const fallback: Persisted = { settings: DEFAULT_SETTINGS, offer: EXAMPLE_OFFER, history: [] };
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return fallback;
-    const p = JSON.parse(raw);
-    return {
-      settings: refreshExamples(merge(DEFAULT_SETTINGS, p.settings), p.settings?.exemplosVersao ?? 1),
-      offer: merge(EXAMPLE_OFFER, p.offer),
-      history: Array.isArray(p.history) ? p.history : [],
-    };
+    return normalize(JSON.parse(raw));
   } catch {
     return fallback;
+  }
+}
+
+/** Dados do modo convidado que valem a pena levar para uma conta nova. */
+export function guestDataToImport(): Persisted | null {
+  try {
+    if (!localStorage.getItem(KEY)) return null;
+  } catch {
+    return null;
+  }
+  const p = load();
+  const editou = JSON.stringify(p.settings) !== JSON.stringify(DEFAULT_SETTINGS);
+  return p.history.length > 0 || editou ? p : null;
+}
+
+export function clearGuest() {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* sem armazenamento */
   }
 }
 

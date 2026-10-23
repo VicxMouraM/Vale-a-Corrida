@@ -2,7 +2,14 @@
 
 Calculadora para decidir, antes de aceitar, se uma entrega da Lalamove dá lucro de verdade com um Hyundai ix35 GLS 2.0 2012 automático blindado (ou qualquer outro carro: tudo é configurável).
 
-React 18 + TypeScript + Tailwind CSS + Vite. Os dados ficam no `localStorage` do navegador.
+React 18 + TypeScript + Tailwind CSS + Vite + Supabase.
+
+- **Sem conta (modo convidado):** tudo funciona e os dados ficam no `localStorage` do aparelho.
+- **Com conta:** login por e-mail e senha ou Google. Ajustes e histórico ficam no Supabase (Postgres com Row Level Security: cada usuário só acessa os próprios dados), sincronizam entre aparelhos e continuam funcionando sem internet, com envio automático quando a conexão volta. Ao criar a conta, o app oferece levar os dados do modo convidado.
+
+- **Planos:** Grátis (calculadora, meta do dia, 1 veículo, 1 plataforma, histórico de 30 dias) e Pro por R$ 49,99/mês via Asaas (Pix, cartão ou boleto), com 7 dias de teste. O acesso é decidido no banco (RLS e `is_pro()`); o webhook do Asaas libera o Pro sozinho.
+
+Para ativar contas e pagamentos, siga [supabase/CONFIGURAR.md](supabase/CONFIGURAR.md).
 
 ## Como executar
 
@@ -10,6 +17,7 @@ Pré-requisito: Node.js 18 ou mais novo.
 
 ```bash
 npm install
+cp .env.example .env.local   # opcional: preencha com o seu Supabase para ter contas
 npm run dev        # abre em http://localhost:5173
 ```
 
@@ -39,7 +47,7 @@ O app é um PWA: instala pelo navegador, ganha ícone na tela de início, abre e
 
 No Android: abra no Chrome → menu ⋮ → **Instalar app**.
 
-Os dados ficam guardados no próprio celular, separados do Safari. Use **Ajustes → Backup** de vez em quando para não perder o histórico se apagar o app.
+Sem conta, os dados ficam guardados no próprio celular, separados do Safari: use **Ajustes → Backup** de vez em quando. Com conta, ficam salvos na nuvem.
 
 ## Telas
 
@@ -101,17 +109,34 @@ Exemplos para um ix35 GLS 2.0 flex automático 2012 blindado, rodando em São Pa
 ## Estrutura
 
 ```
+supabase/
+  migrations/0001_base.sql  tabelas, RLS, exclusão de conta
+  migrations/0002_planos.sql  assinaturas, teste grátis, limite de 30 dias no grátis
+  functions/assinar         cria a assinatura no Asaas e devolve o link de pagamento
+  functions/cancelar        cancela a assinatura
+  functions/asaas-webhook   recebe os pagamentos e libera/bloqueia o Pro
+  CONFIGURAR.md             passo a passo do Supabase
 src/
-  App.tsx                 navegação, persistência, barra inferior no celular
+  App.tsx                 login/convidado, navegação, barra inferior no celular
+  auth/AuthProvider.tsx   sessão e todas as formas de login
+  lib/supabase.ts         cliente Supabase (null sem as chaves = só convidado)
+  lib/useAppData.ts       estado do app: aparelho ou conta, fila offline e envio
+  lib/cloud.ts            leitura/gravação no Supabase, diferenças e mesclagem
+  lib/cloud.test.ts       testes da sincronização e da limpeza de dados
+  lib/plan.ts             plano do usuário, regras do grátis, checkout
   types.ts                tipos de dados
   defaults.ts             valores padrão (estimativas)
   lib/calc.ts             todos os cálculos (funções puras)
   lib/calc.test.ts        testes das fórmulas
   lib/format.ts           R$, números pt-BR, leitura com vírgula
-  lib/storage.ts          localStorage com mesclagem segura
+  lib/storage.ts          modo convidado, mesclagem segura e limpeza de dados
   lib/csv.ts              exportação CSV
   lib/period.ts           filtros dia/semana/mês
   components/
+    AuthScreen.tsx        entrar, criar conta, Google, recuperar senha
+    AccountScreen.tsx     conta, sair, excluir conta (LGPD)
+    PlanScreen.tsx        Grátis × Pro, assinar e cancelar
+    Pro.tsx               travas e selo do Pro
     Calculator.tsx        tela principal (oferta, painel, conta da corrida)
     Verdict.tsx           cores e textos do semáforo
     Goals.tsx             metas

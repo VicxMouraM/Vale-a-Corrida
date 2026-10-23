@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { compareFuels, depreciationPerKm, fixedMonthlyForDeliveries, fixedMonthlyTotal, fixedPerHour, itemPerKm, maintenancePerKm, pendingEstimates } from '../lib/calc';
 import { downloadText } from '../lib/csv';
+import { normalize } from '../lib/storage';
 import { brl, brl4, num, pct } from '../lib/format';
 import type { FixedItem, FuelChoice, HistoryEntry, MaintItem, Settings } from '../types';
 import { Btn, Card, EstBadge, NumField, Segmented } from './ui';
@@ -11,6 +12,7 @@ interface Props {
   setSettings: (s: Settings) => void;
   history: HistoryEntry[];
   setHistory: (h: HistoryEntry[]) => void;
+  cloud?: boolean;
 }
 
 const SECTIONS = [
@@ -21,7 +23,7 @@ const SECTIONS = [
   ['aj-dados', 'Backup'],
 ] as const;
 
-export function SettingsPanel({ s, setSettings, history, setHistory }: Props) {
+export function SettingsPanel({ s, setSettings, history, setHistory, cloud }: Props) {
   const pend = pendingEstimates(s);
   return (
     <div className="flex flex-col gap-5">
@@ -51,7 +53,7 @@ export function SettingsPanel({ s, setSettings, history, setHistory }: Props) {
           <PlatformSection s={s} setSettings={setSettings} />
         </div>
         <WearSection s={s} setSettings={setSettings} />
-        <Backup s={s} setSettings={setSettings} history={history} setHistory={setHistory} />
+        <Backup s={s} setSettings={setSettings} history={history} setHistory={setHistory} cloud={cloud} />
       </div>
     </div>
   );
@@ -351,7 +353,7 @@ function PlatformSection({ s, setSettings }: SP) {
 }
 
 /* -------- Backup -------- */
-function Backup({ s, setSettings, history, setHistory }: Props) {
+function Backup({ s, setSettings, history, setHistory, cloud }: Props) {
   const [text, setText] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -366,8 +368,9 @@ function Backup({ s, setSettings, history, setHistory }: Props) {
     try {
       const p = JSON.parse(raw);
       if (!p || typeof p !== 'object' || !p.settings) throw new Error();
-      setSettings({ ...DEFAULT_SETTINGS, ...p.settings });
-      if (Array.isArray(p.history)) setHistory(p.history);
+      const n = normalize(p);
+      setSettings(n.settings);
+      if (Array.isArray(p.history)) setHistory(n.history);
       setMsg('Backup restaurado.');
     } catch {
       setMsg('Não consegui ler esse backup. Cole o conteúdo completo gerado pelo app.');
@@ -379,7 +382,11 @@ function Backup({ s, setSettings, history, setHistory }: Props) {
       <h2 id="aj-dados" className="mb-1 scroll-mt-24 font-display text-xl font-semibold tracking-wide">
         Backup
       </h2>
-      <p className="mb-3 text-sm text-muted">Tudo fica salvo só neste navegador. Gere um backup antes de trocar de celular ou limpar os dados do navegador.</p>
+      <p className="mb-3 text-sm text-muted">
+        {cloud
+          ? 'Seus dados ficam salvos na sua conta. O backup é uma cópia extra em arquivo, que você guarda onde quiser.'
+          : 'Sem conta, tudo fica salvo só neste navegador. Gere um backup antes de trocar de celular ou limpar os dados do navegador, ou crie uma conta.'}
+      </p>
       <div className="flex flex-wrap gap-2">
         <Btn onClick={exportJson}>Gerar backup</Btn>
         <label className="cursor-pointer rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold hover:bg-sunk">

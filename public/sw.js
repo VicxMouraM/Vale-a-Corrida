@@ -1,7 +1,9 @@
 // Service worker: deixa o app abrir sem internet.
 // Página: tenta a rede primeiro (pega atualizações) e cai no cache se estiver offline.
 // Arquivos estáticos (js, css, ícones, fontes): cache primeiro.
-const CACHE = 'vale-a-corrida-v1';
+// Nunca guarda respostas da API (Supabase): elas têm dados pessoais e precisam estar sempre atualizadas.
+const CACHE = 'vale-a-corrida-v2';
+const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png'])).then(() => self.skipWaiting()));
@@ -16,6 +18,11 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  const sameOrigin = url.origin === self.location.origin;
+  if (!sameOrigin && !FONT_HOSTS.includes(url.hostname)) return;
+  // Volta do login (Google/Apple/e-mail) traz um código na URL: sempre da rede
+  if (req.mode === 'navigate' && url.searchParams.has('code')) return;
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req)

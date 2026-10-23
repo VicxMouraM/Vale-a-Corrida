@@ -4,7 +4,9 @@ import { downloadText, historyToCsv } from '../lib/csv';
 import { brl, hm, num } from '../lib/format';
 import { dayKey, periodLabel, periodRange, shiftRef, toLocalInput, type PeriodKind } from '../lib/period';
 import type { Fuel, HistoryEntry, Settings } from '../types';
+import { DIAS_HISTORICO_GRATIS, usePlan } from '../lib/plan';
 import { BarChart, StackBar } from './charts';
+import { ProGate, ProTag } from './Pro';
 import { Btn, Card, NumField, SectionTitle, Segmented, TextField } from './ui';
 
 export interface Draft {
@@ -18,6 +20,8 @@ interface Props {
   setHistory: (h: HistoryEntry[]) => void;
   draft: Draft | null;
   setDraft: (d: Draft | null) => void;
+  /** corridas guardadas que o plano grátis não mostra */
+  hiddenCount?: number;
 }
 
 export function newDraft(s: Settings): Draft {
@@ -35,7 +39,8 @@ export function newDraft(s: Settings): Draft {
   };
 }
 
-export function History({ s, history, setHistory, draft, setDraft }: Props) {
+export function History({ s, history, setHistory, draft, setDraft, hiddenCount = 0 }: Props) {
+  const { plan, upgrade } = usePlan();
   const [kind, setKind] = useState<PeriodKind>('semana');
   const [ref, setRef] = useState(() => new Date());
   const [csvText, setCsvText] = useState<string | null>(null);
@@ -71,6 +76,7 @@ export function History({ s, history, setHistory, draft, setDraft }: Props) {
   }
 
   function exportCsv() {
+    if (!plan.pro) return upgrade();
     const text = historyToCsv(history);
     const ok = downloadText(`historico-entregas-${dayKey(new Date())}.csv`, text);
     setCsvText(text);
@@ -103,7 +109,7 @@ export function History({ s, history, setHistory, draft, setDraft }: Props) {
               { value: 'dia', label: 'Dia' },
               { value: 'semana', label: 'Semana' },
               { value: 'mes', label: 'Mês' },
-              { value: 'tudo', label: 'Tudo' },
+              { value: 'tudo', label: plan.pro ? 'Tudo' : `${DIAS_HISTORICO_GRATIS} dias` },
             ]}
           />
           {kind !== 'tudo' && (
@@ -126,13 +132,24 @@ export function History({ s, history, setHistory, draft, setDraft }: Props) {
               + Registrar corrida
             </Btn>
           )}
-          <Btn onClick={exportCsv} disabled={history.length === 0}>
-            Exportar CSV
+          <Btn onClick={exportCsv} disabled={plan.pro && history.length === 0}>
+            <span className="inline-flex items-center gap-1.5">
+              Exportar CSV {!plan.pro && <ProTag />}
+            </span>
           </Btn>
         </div>
       </div>
       <h2 className="-mt-2 font-display text-2xl font-semibold first-letter:uppercase">{periodLabel(kind, ref)}</h2>
 
+      {!plan.pro && (
+        <p className="rounded-md bg-sunk px-3 py-2 text-sm">
+          No plano grátis aparecem as corridas dos últimos {DIAS_HISTORICO_GRATIS} dias.
+          {hiddenCount > 0 ? ` Outras ${hiddenCount} estão guardadas e voltam a aparecer no Pro.` : ' As mais antigas ficam guardadas e voltam a aparecer no Pro.'}{' '}
+          <button className="font-semibold text-accent" onClick={upgrade}>
+            Ver o Pro
+          </button>
+        </p>
+      )}
       {msg && <p className="rounded-md bg-sunk px-3 py-2 text-sm" role="status">{msg}</p>}
       {csvText && (
         <Card>
@@ -160,6 +177,7 @@ export function History({ s, history, setHistory, draft, setDraft }: Props) {
       </div>
 
       {sum.qtd > 0 ? (
+        <ProGate title="Gráficos do período" hint="Lucro por dia e para onde foi cada real do faturamento.">
         <div className="grid gap-4 [&>*]:min-w-0 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           <Card>
             <SectionTitle aside={<span className="text-xs text-muted">{chart.caption}</span>}>Lucro estimado</SectionTitle>
@@ -180,6 +198,7 @@ export function History({ s, history, setHistory, draft, setDraft }: Props) {
             <p className="mt-3 text-xs text-muted">Manutenção e depreciação são reservas: separe esse valor para quando os serviços chegarem.</p>
           </Card>
         </div>
+        </ProGate>
       ) : (
         <Card className="border-dashed text-center">
           <p className="font-display text-xl font-semibold">Nenhuma corrida neste período</p>

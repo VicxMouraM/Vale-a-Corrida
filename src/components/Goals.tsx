@@ -1,6 +1,8 @@
 import { goalRows, type HistorySummary } from '../lib/calc';
 import { brl, num } from '../lib/format';
+import { usePlan } from '../lib/plan';
 import type { Settings } from '../types';
+import { ProLock } from './Pro';
 import { Card, NumField, SectionTitle, Toggle } from './ui';
 
 export function Goals({ s, setSettings, hist }: { s: Settings; setSettings: (s: Settings) => void; hist: HistorySummary }) {
@@ -12,8 +14,11 @@ export function Goals({ s, setSettings, hist }: { s: Settings; setSettings: (s: 
   const usarHist = g.usarMediaHistorico && temHist;
   const kmH = usarHist ? hist.kmPorHora : g.kmPorHora;
   const corridasH = temHist ? hist.qtd / hist.horas : 1;
-  const rows = goalRows(s, kmH, corridasH);
-  const avisos = inconsistencies(s);
+  const allRows = goalRows(s, kmH, corridasH);
+  const { plan } = usePlan();
+  // Grátis: só a meta do dia. Pro: semana e mês também.
+  const rows = plan.pro ? allRows : allRows.slice(0, 1);
+  const avisos = plan.pro ? inconsistencies(s) : inconsistencies(s).slice(0, 1);
 
   return (
     <div className="grid gap-5 [&>*]:min-w-0 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start">
@@ -41,16 +46,30 @@ export function Goals({ s, setSettings, hist }: { s: Settings; setSettings: (s: 
 
         <Card>
           <SectionTitle>Quanto quero ganhar</SectionTitle>
-          <div className="grid grid-cols-3 gap-3">
-            <NumField id="g-d" label="Por dia" prefix="R$" value={g.dia} onChange={setG('dia')} />
-            <NumField id="g-s" label="Por semana" prefix="R$" value={g.semana} onChange={setG('semana')} />
-            <NumField id="g-m" label="Por mês" prefix="R$" value={g.mes} onChange={setG('mes')} />
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
-            <NumField id="g-hd" label="Horas por dia" value={g.horasPorDia} onChange={setG('horasPorDia')} max={24} />
-            <NumField id="g-ds" label="Dias/semana" value={g.diasPorSemana} onChange={setG('diasPorSemana')} max={7} decimals={false} />
-            <NumField id="g-dm" label="Dias/mês" value={g.diasPorMes} onChange={setG('diasPorMes')} max={31} decimals={false} />
-          </div>
+          {plan.pro ? (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <NumField id="g-d" label="Por dia" prefix="R$" value={g.dia} onChange={setG('dia')} />
+                <NumField id="g-s" label="Por semana" prefix="R$" value={g.semana} onChange={setG('semana')} />
+                <NumField id="g-m" label="Por mês" prefix="R$" value={g.mes} onChange={setG('mes')} />
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
+                <NumField id="g-hd" label="Horas por dia" value={g.horasPorDia} onChange={setG('horasPorDia')} max={24} />
+                <NumField id="g-ds" label="Dias/semana" value={g.diasPorSemana} onChange={setG('diasPorSemana')} max={7} decimals={false} />
+                <NumField id="g-dm" label="Dias/mês" value={g.diasPorMes} onChange={setG('diasPorMes')} max={31} decimals={false} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <NumField id="g-d" label="Meta do dia" prefix="R$" value={g.dia} onChange={setG('dia')} />
+                <NumField id="g-hd" label="Horas por dia" value={g.horasPorDia} onChange={setG('horasPorDia')} max={24} />
+              </div>
+              <div className="mt-3">
+                <ProLock compact title="Metas da semana e do mês" hint="Planeje a semana e o mês e veja quanto faturar em cada um." />
+              </div>
+            </>
+          )}
           <div className="mt-3 flex flex-col gap-3">
             {usarHist ? (
               <p className="text-sm">

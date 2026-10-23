@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useAuth } from './auth/AuthProvider';
+import { AccountScreen, STATUS_TEXT } from './components/AccountScreen';
+import { AuthScreen, NewPasswordScreen } from './components/AuthScreen';
 import { Calculator } from './components/Calculator';
 import { Goals } from './components/Goals';
+import { PlanScreen } from './components/PlanScreen';
 import { History, type Draft } from './components/History';
 import { SettingsPanel } from './components/SettingsPanel';
 import { summarize, type Analysis } from './lib/calc';
 import { dayKey } from './lib/period';
-import { load, save } from './lib/storage';
-import type { Tab } from './types';
+import { PlanContext, planBadge, splitHistory, usePlanLoader, type Plan } from './lib/plan';
+import { useAppData } from './lib/useAppData';
+import type { HistoryEntry, Offer, Settings, Tab } from './types';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'corrida', label: 'Corrida', icon: 'M4 17h16M6 17l1.5-6h9L18 17M8 21a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM16 21a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM9 7h6' },
@@ -24,20 +29,127 @@ function Icon({ d }: { d: string }) {
 }
 
 export default function App() {
-  const initial = useMemo(load, []);
-  const [settings, setSettings] = useState(initial.settings);
-  const [offer, setOffer] = useState(initial.offer);
-  const [history, setHistory] = useState(initial.history);
+  const auth = useAuth();
+  if (auth.loading) return <Splash text="Abrindo…" />;
+  if (auth.recovering) return <NewPasswordScreen />;
+  // key: trocar de usuário (ou sair) recomeça o estado do zero, sem misturar dados
+  return <Main key={auth.user?.id ?? 'convidado'} uid={auth.user?.id ?? null} />;
+}
+
+function Splash({ text, children }: { text: string; children?: ReactNode }) {
+  return (
+    <div className="gutter flex min-h-screen flex-col items-center justify-center gap-3 text-center">
+      <div className="font-display text-3xl font-bold tracking-wide">
+        Vale a <span className="text-accent">Corrida?</span>
+      </div>
+      <p className="text-sm text-muted">{text}</p>
+      {children}
+    </div>
+  );
+}
+
+function Main({ uid }: { uid: string | null }) {
+  const auth = useAuth();
+  const app = useAppData(uid);
+  const planLoader = usePlanLoader(uid);
+  const plan = planLoader.plan;
+  const [screen, setScreen] = useState<'app' | 'login' | 'conta' | 'plano'>('app');
+
+  // Virou Pro (pagou): busca de novo para trazer o histórico antigo que o plano grátis escondia
+  const lastPro = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (planLoader.loading) return;
+    if (lastPro.current === false && plan.pro && uid) void app.retryLoad();
+    lastPro.current = plan.pro;
+  }, [plan.pro, planLoader.loading, uid, app.retryLoad]);
+
+  if (!app.data) {
+    return app.loadError ? (
+      <Splash text="Não consegui carregar sua conta.">
+        <p className="max-w-md break-words rounded-md bg-sunk px-3 py-2 font-mono text-xs text-muted">{app.loadError}</p>
+        <button className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-ink" onClick={() => void app.retryLoad()}>
+          Tentar de novo
+        </button>
+      </Splash>
+    ) : (
+      <Splash text="Carregando sua conta…" />
+    );
+  }
+
+  return (
+    <PlanContext.Provider value={{ plan, upgrade: () => setScreen('plano') }}>
+    <Shell
+      plan={plan}
+      showPlan={auth.enabled}
+      onPlan={() => setScreen('plano')}
+      settings={app.data.settings}
+      setSettings={app.setSettings}
+      offer={app.data.offer}
+      setOffer={app.setOffer}
+      history={app.data.history}
+      setHistory={app.setHistory}
+      statusText={app.status === 'local' || app.status === 'synced' ? null : STATUS_TEXT[app.status]}
+      statusBad={app.status === 'error' || app.status === 'local-err'}
+      accountLabel={!auth.enabled ? null : uid ? 'Conta' : 'Entrar'}
+      onAccount={() => setScreen(uid ? 'conta' : 'login')}
+      closeOverlay={() => setScreen('app')}
+      overlay={
+        screen === 'login' && !uid ? (
+          <AuthScreen onClose={() => setScreen('app')} />
+        ) : screen === 'conta' && uid ? (
+          <AccountScreen status={app.status} hasPending={app.hasPending} forgetDevice={app.forgetDevice} onBack={() => setScreen('app')} />
+        ) : screen === 'plano' ? (
+          <PlanScreen plan={plan} loggedIn={!!uid} onLogin={() => setScreen('login')} onBack={() => setScreen('app')} refresh={planLoader.refresh} />
+        ) : null
+      }
+      banner={
+        app.importOffer && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/40 bg-surface p-4">
+            <p className="text-sm">
+              Encontramos dados salvos neste aparelho
+              {app.importOffer.corridas > 0 ? ` (${app.importOffer.corridas} corridas)` : ''}. Levar para a sua conta?
+            </p>
+            <div className="flex gap-2">
+              <button className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-ink" onClick={app.importOffer.accept}>
+                Levar para a conta
+              </button>
+              <button className="rounded-lg border border-line px-4 py-2 text-sm font-semibold" onClick={app.importOffer.dismiss}>
+                Agora não
+              </button>
+            </div>
+          </div>
+        )
+      }
+    />
+    </PlanContext.Provider>
+  );
+}
+
+interface ShellProps {
+  plan: Plan;
+  showPlan: boolean;
+  onPlan: () => void;
+  settings: Settings;
+  setSettings: (s: Settings) => void;
+  offer: Offer;
+  setOffer: (o: Offer) => void;
+  history: HistoryEntry[];
+  setHistory: (h: HistoryEntry[]) => void;
+  statusText: string | null;
+  statusBad: boolean;
+  accountLabel: string | null;
+  onAccount: () => void;
+  closeOverlay: () => void;
+  overlay: ReactNode;
+  banner: ReactNode;
+}
+
+function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer, history, setHistory, statusText, statusBad, accountLabel, onAccount, closeOverlay, overlay, banner }: ShellProps) {
   const [tab, setTab] = useState<Tab>(() => {
     const h = typeof location !== 'undefined' ? location.hash.slice(1) : '';
     return (TABS.some((t) => t.id === h) ? h : 'corrida') as Tab;
   });
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [saved, setSaved] = useState(true);
-
-  useEffect(() => {
-    setSaved(save({ settings, offer, history }));
-  }, [settings, offer, history]);
 
   useEffect(() => {
     try {
@@ -47,12 +159,16 @@ export default function App() {
     }
   }, [tab]);
 
-  const hist = useMemo(() => summarize(history), [history]);
+  // Plano grátis: as telas veem só os últimos 30 dias; o resto continua guardado intacto
+  const { visible, hidden } = useMemo(() => splitHistory(history, plan.pro), [history, plan.pro]);
+  const setVisible = (v: HistoryEntry[]) => setHistory(hidden.length ? [...hidden, ...v] : v);
+
+  const hist = useMemo(() => summarize(visible), [visible]);
   const today = useMemo(() => {
     const k = dayKey(new Date());
-    const t = summarize(history.filter((e) => dayKey(new Date(e.data)) === k));
+    const t = summarize(visible.filter((e) => dayKey(new Date(e.data)) === k));
     return { qtd: t.qtd, lucro: t.lucro };
-  }, [history]);
+  }, [visible]);
 
   function openSettings() {
     setTab('ajustes');
@@ -60,6 +176,7 @@ export default function App() {
   }
 
   function goTab(t: Tab) {
+    closeOverlay();
     setTab(t);
     window.scrollTo({ top: 0 });
   }
@@ -105,16 +222,38 @@ export default function App() {
               </button>
             ))}
           </nav>
-          {!saved && <span className="shrink-0 text-xs text-warn">Não foi possível salvar neste navegador</span>}
+          <div className="flex shrink-0 items-center gap-3">
+            {statusText && <span className={`hidden text-xs sm:inline ${statusBad ? 'text-bad' : 'text-warn'}`}>{statusText}</span>}
+            {showPlan && (
+              <button
+                onClick={onPlan}
+                className={`rounded-full px-2.5 py-1 text-xs font-bold ${plan.pro ? 'bg-accent text-accent-ink' : 'border border-accent/50 text-accent hover:bg-sunk'}`}
+              >
+                {plan.pro ? planBadge(plan) : 'Seja Pro'}
+              </button>
+            )}
+            {accountLabel && (
+              <button onClick={onAccount} className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-semibold hover:bg-sunk">
+                <Icon d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0" />
+                {accountLabel}
+              </button>
+            )}
+          </div>
         </div>
       </header>
       <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-30 h-[env(safe-area-inset-top,0px)] bg-bg" />
 
       <main className="gutter mx-auto max-w-6xl py-5">
+        {statusText && <p className={`mb-3 text-xs sm:hidden ${statusBad ? 'text-bad' : 'text-warn'}`}>{statusText}</p>}
+        {overlay ?? (
+          <>
+        {banner}
         {tab === 'corrida' && <Calculator offer={offer} setOffer={setOffer} settings={settings} onRegister={registerFromAnalysis} onOpenSettings={openSettings} today={today} />}
         {tab === 'metas' && <Goals s={settings} setSettings={setSettings} hist={hist} />}
-        {tab === 'historico' && <History s={settings} history={history} setHistory={setHistory} draft={draft} setDraft={setDraft} />}
-        {tab === 'ajustes' && <SettingsPanel s={settings} setSettings={setSettings} history={history} setHistory={setHistory} />}
+        {tab === 'historico' && <History s={settings} history={visible} setHistory={setVisible} draft={draft} setDraft={setDraft} hiddenCount={hidden.length} />}
+        {tab === 'ajustes' && <SettingsPanel s={settings} setSettings={setSettings} history={history} setHistory={setHistory} cloud={accountLabel === 'Conta'} />}
+          </>
+        )}
       </main>
 
       {/* Navegação inferior no celular */}

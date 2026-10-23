@@ -112,10 +112,19 @@ describe('telas', () => {
     expect(html).toContain('Aceitei');
   });
 
-  it('importar: tela inicial com plataformas e instruções', () => {
-    const html = withPlan(FREE_PLAN, <ImportPanel s={configured()} existentes={new Set()} onImport={noop} onClose={noop} />);
+  it('importar: tela inicial com plataformas, abas e instruções da plataforma', () => {
+    const html = withPlan(
+      FREE_PLAN,
+      <AuthProvider>
+        <ImportPanel s={configured()} existentes={new Set()} onImport={noop} onClose={noop} />
+      </AuthProvider>,
+    );
     expect(html).toContain('Importar corridas');
-    expect(html).toContain('Lalamove');
+    expect(html).toContain('Prints da tela');
+    // Lalamove (plataforma em uso) não exporta planilha: abre direto em prints, com a dica certa
+    expect(html).toContain('Carteira');
+    // sem conta, a leitura de prints pede login
+    expect(html).toContain('entre na sua conta');
   });
 
   it('importar .zip: escolhe a planilha de corridas e ignora o resto', async () => {

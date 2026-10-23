@@ -7,7 +7,7 @@ import { buildEntry, type HistoryInput } from './calc';
 import { parseNum } from './format';
 import type { Fuel, HistoryEntry, Settings } from '../types';
 
-export type Campo = 'data' | 'valor' | 'km' | 'duracao' | 'status';
+export type Campo = 'data' | 'valor' | 'km' | 'duracao' | 'fim' | 'status';
 export type UnidadeTempo = 'min' | 'seg' | 'h' | 'auto';
 export type UnidadeDist = 'km' | 'mi' | 'm';
 
@@ -16,6 +16,8 @@ export interface Mapeamento {
   valor: number | null;
   km: number | null;
   duracao: number | null;
+  /** hora de término: quando não há coluna de duração, a duração sai de fim − início (ex.: Uber "Driver Lifetime Trips") */
+  fim: number | null;
   status: number | null;
   tempo: UnidadeTempo;
   dist: UnidadeDist;
@@ -90,6 +92,7 @@ const CHAVES: Record<Campo, string[]> = {
   valor: ['ganho liquido', 'valor liquido', 'seus ganhos', 'ganhos', 'ganho', 'repasse', 'earnings', 'net', 'payout', 'valor recebido', 'valor da viagem', 'valor da corrida', 'valor', 'fare amount', 'fare', 'total', 'amount', 'preco'],
   km: ['distancia km', 'distancia', 'distance km', 'distance miles', 'trip distance', 'distance', 'quilometragem', 'km'],
   duracao: ['duracao', 'duration', 'tempo de viagem', 'tempo da corrida', 'trip duration', 'tempo', 'minutos', 'minutes'],
+  fim: ['dropoff time', 'drop off time', 'end time', 'trip end', 'hora de termino', 'hora de chegada', 'termino', 'finalizad', 'fim', 'chegada'],
   status: ['status da viagem', 'trip status', 'status', 'situacao', 'estado'],
 };
 
@@ -99,6 +102,7 @@ const EXCLUI: Record<Campo, RegExp> = {
   valor: /dist|\bkm\b|quilomet|tempo|durac|minut|\bdata\b|\bdate\b|\btime\b|status|taxa|tarifa da plataforma|gorjeta|tip/,
   km: /valor|r\$|preco|ganho|por km|tarifa|fare|price/,
   duracao: /valor|ganho|\bdata\b|\bdate\b|espera ate/,
+  fim: /valor|ganho|distan|km/,
   status: /pagamento/,
 };
 
@@ -115,7 +119,8 @@ export function detectar(cabecalho: string[], amostra: string[][]): Mapeamento {
     return null;
   };
   // Ordem importa: "data" antes de "valor" evita pegar "data" em "data do valor"
-  const m: Mapeamento = { data: achar('data'), valor: achar('valor'), km: achar('km'), duracao: achar('duracao'), status: achar('status'), tempo: 'auto', dist: 'km' };
+  const m: Mapeamento = { data: achar('data'), valor: achar('valor'), km: achar('km'), duracao: achar('duracao'), fim: null, status: achar('status'), tempo: 'auto', dist: 'km' };
+  if (m.duracao === null) m.fim = achar('fim');
   if (m.km !== null) {
     const h = norm(cabecalho[m.km]);
     m.dist = /\bmi(les)?\b|milhas/.test(h) ? 'mi' : /\bmetros?\b|\(m\)| m$/.test(h) ? 'm' : 'km';
@@ -216,32 +221,115 @@ export function montar(p: Planilha, m: Mapeamento, s: Settings, opts: { platafor
     const data = lerData(cel(m.data));
     const valor = lerDinheiro(cel(m.valor));
     const km = lerDistancia(cel(m.km), m.dist);
-    const minutos = lerDuracao(cel(m.duracao), m.tempo);
+    const fim = m.duracao === null && m.fim !== null ? lerData(cel(m.fim)) : null;
+    const minutos = m.duracao !== null ? lerDuracao(cel(m.duracao), m.tempo) : data && fim ? (fim.getTime() - data.getTime()) / 60000 : NaN;
     if (!data) return r.invalidas.push({ linha: n, motivo: 'data não reconhecida' });
     if (!Number.isFinite(valor) || valor <= 0) return r.invalidas.push({ linha: n, motivo: 'sem valor' });
     if (!Number.isFinite(km) || km <= 0) return r.invalidas.push({ linha: n, motivo: 'sem distância' });
     if (!Number.isFinite(minutos) || minutos <= 0) return r.invalidas.push({ linha: n, motivo: 'sem duração' });
     if (valor > 9999 || km > 2000 || minutos > 1440) return r.invalidas.push({ linha: n, motivo: 'valor fora do normal' });
-    const id = idImportado(opts.plataforma, data, valor, km);
-    if (opts.existentes.has(id) || vistos.has(id)) {
+    const e = corridaImportada({ data, valor, km, minutos }, s, opts.plataforma, combustivel);
+    if (opts.existentes.has(e.id) || vistos.has(e.id)) {
       r.repetidas++;
       return;
     }
-    vistos.add(id);
-    const input: HistoryInput = {
-      data: data.toISOString(),
-      valor: Math.round(valor * 100) / 100,
-      bonus: 0,
-      km: Math.round(km * 10) / 10,
-      minutos: Math.max(1, Math.round(minutos)),
-      despesas: 0,
-      taxas: 0,
-      combustivel,
-      plataforma: opts.plataforma,
-      veiculo: s.veiculoAtivo ?? undefined,
-      obs: 'Importada',
-    };
-    r.validas.push(buildEntry(input, s, id));
+    vistos.add(e.id);
+    r.validas.push(e);
   });
   return r;
+}
+
+/** Corrida pronta para o histórico, com id estável (a mesma corrida importada de novo tem o mesmo id). */
+export function corridaImportada(
+  l: { data: Date; valor: number; km: number; minutos: number },
+  s: Settings,
+  plataforma: string,
+  combustivel: Fuel = s.veiculo.combustivelPadrao === 'etanol' ? 'etanol' : 'gasolina',
+  obs = 'Importada',
+): HistoryEntry {
+  const input: HistoryInput = {
+    data: l.data.toISOString(),
+    valor: Math.round(l.valor * 100) / 100,
+    bonus: 0,
+    km: Math.round(l.km * 10) / 10,
+    minutos: Math.max(1, Math.round(l.minutos)),
+    despesas: 0,
+    taxas: 0,
+    combustivel,
+    plataforma,
+    veiculo: s.veiculoAtivo ?? undefined,
+    obs,
+  };
+  return buildEntry(input, s, idImportado(plataforma, l.data, l.valor, l.km));
+}
+
+/* ---------- Corridas lidas de prints (pela IA) ---------- */
+
+export interface LinhaPrint {
+  data: string | null; // AAAA-MM-DD
+  hora: string | null; // HH:MM
+  valor: number | null;
+  km: number | null;
+  minutos: number | null;
+  status: 'concluida' | 'cancelada' | 'desconhecido';
+}
+
+/** Linha editável na conferência dos prints. */
+export interface Rascunho {
+  chave: string;
+  incluir: boolean;
+  data: string; // AAAA-MM-DD
+  hora: string; // HH:MM
+  valor: string;
+  km: string;
+  minutos: string;
+  cancelada: boolean;
+}
+
+const txt = (n: number | null) => (n === null || !Number.isFinite(n) ? '' : String(n).replace('.', ','));
+
+export function rascunhosDePrints(linhas: LinhaPrint[]): Rascunho[] {
+  return linhas.map((l, i) => ({
+    chave: `p${i}`,
+    incluir: l.status !== 'cancelada',
+    data: l.data && /^\d{4}-\d{2}-\d{2}$/.test(l.data) ? l.data : '',
+    hora: l.hora && /^\d{1,2}:\d{2}$/.test(l.hora) ? l.hora.padStart(5, '0') : '',
+    valor: txt(l.valor),
+    km: txt(l.km),
+    minutos: l.minutos === null ? '' : String(Math.round(l.minutos)),
+    cancelada: l.status === 'cancelada',
+  }));
+}
+
+/** O que falta numa linha para ela poder entrar no histórico (vazio = pronta). */
+export function faltaNoRascunho(r: Rascunho): string[] {
+  const f: string[] = [];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(r.data)) f.push('data');
+  const v = parseNum(r.valor);
+  if (!Number.isFinite(v) || v <= 0 || v > 9999) f.push('valor');
+  const k = parseNum(r.km);
+  if (!Number.isFinite(k) || k <= 0 || k > 2000) f.push('km');
+  const m = parseNum(r.minutos);
+  if (!Number.isFinite(m) || m <= 0 || m > 1440) f.push('minutos');
+  return f;
+}
+
+export function corridasDeRascunhos(rs: Rascunho[], s: Settings, plataforma: string, existentes: Set<string>): { validas: HistoryEntry[]; repetidas: number } {
+  const validas: HistoryEntry[] = [];
+  let repetidas = 0;
+  const vistos = new Set<string>();
+  for (const r of rs) {
+    if (!r.incluir || faltaNoRascunho(r).length) continue;
+    const [a, me, d] = r.data.split('-').map(Number);
+    const [hh, mm] = (r.hora || '12:00').split(':').map(Number);
+    const data = new Date(a, me - 1, d, hh, mm);
+    const e = corridaImportada({ data, valor: parseNum(r.valor), km: parseNum(r.km), minutos: parseNum(r.minutos) }, s, plataforma, undefined, 'Importada de print');
+    if (existentes.has(e.id) || vistos.has(e.id)) {
+      repetidas++;
+      continue;
+    }
+    vistos.add(e.id);
+    validas.push(e);
+  }
+  return { validas, repetidas };
 }

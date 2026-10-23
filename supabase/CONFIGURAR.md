@@ -236,3 +236,18 @@ Aparecem só para quem não é Pro, na calculadora e no histórico, com a etique
 | Injeção de script (XSS) | CSP restrita; o React escapa textos; links de anúncio só https e sem truque de usuário@ |
 | Phishing em nome do app | Avisos no app e nos Termos: nunca pedimos senha, código ou cartão |
 | CPF guardado | Não fica no banco; só um hash com segredo para bloqueios |
+
+## 9. Importação de corridas (planilha e prints)
+
+**Planilha / .zip:** funciona sem configuração. O app reconhece as colunas sozinho; a duração também pode vir de início e fim (arquivo "Driver Lifetime Trips" da Uber).
+
+**Prints (leitura por IA):**
+1. Rode [`migrations/0009_is_pro_de.sql`](migrations/0009_is_pro_de.sql) (já aplicada no projeto atual).
+2. Crie uma chave em [console.anthropic.com](https://console.anthropic.com) → **API Keys**. Em **Billing**, coloque créditos e um **limite de gasto mensal** (proteção contra surpresas).
+3. Grave a chave só no servidor (nunca no app nem no GitHub):
+   ```bash
+   npx supabase secrets set ANTHROPIC_API_KEY='sk-ant-...' --project-ref SEU-PROJECT-REF
+   npx supabase functions deploy ler-print --project-ref SEU-PROJECT-REF
+   ```
+4. Limites por usuário (custo sob controle): Grátis 3 envios a cada 30 dias; Pro 40 por dia; até 5 prints por envio. Os prints são reduzidos no celular antes de enviar.
+5. Custo aproximado: alguns centavos de dólar por envio. Acompanhe em console.anthropic.com → Usage.

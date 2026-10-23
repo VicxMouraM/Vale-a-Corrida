@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../defaults';
-import { detectar, lerData, lerDinheiro, lerDistancia, lerDuracao, montar, parseCsv } from './importer';
+import { corridaImportada, corridasDeRascunhos, detectar, faltaNoRascunho, lerData, lerDinheiro, lerDistancia, lerDuracao, montar, parseCsv, rascunhosDePrints, type LinhaPrint } from './importer';
 import { addVehicle, buildVehicle } from './vehicles';
 
 const s = addVehicle(DEFAULT_SETTINGS, buildVehicle({ id: 'v1', nome: 'Onix', tipo: 'popular', automatico: false, blindado: false }));
@@ -105,5 +105,49 @@ describe('montar', () => {
     const r2 = montar(p, m, s, { plataforma: 'uber', existentes: new Set(r1.validas.map((e) => e.id)) });
     expect(r2.validas).toHaveLength(0);
     expect(r2.repetidas).toBe(2);
+  });
+});
+
+describe('duração por início e fim (Uber "Driver Lifetime Trips")', () => {
+  it('sem coluna de duração, calcula fim − início', () => {
+    const csv = ['Begin Trip Time,Dropoff Time,Distance (km),Fare Amount', '2026-10-20 14:00:00 +0000 UTC,2026-10-20 14:27:00 +0000 UTC,9.5,24.00'].join('\n');
+    const p = parseCsv(csv);
+    const m = detectar(p.cabecalho, p.linhas);
+    expect(m.duracao).toBeNull();
+    expect(m.fim).toBe(1);
+    const r = montar(p, m, s, { plataforma: 'uber', existentes: new Set() });
+    expect(r.validas).toHaveLength(1);
+    expect(r.validas[0].minutos).toBe(27);
+  });
+});
+
+describe('prints', () => {
+  const linhas: LinhaPrint[] = [
+    { data: '2026-10-20', hora: '14:33', valor: 23.5, km: 12.4, minutos: 25, status: 'concluida' },
+    { data: '2026-10-20', hora: '15:10', valor: 18, km: null, minutos: null, status: 'concluida' },
+    { data: '2026-10-21', hora: '09:00', valor: 10, km: 3, minutos: 8, status: 'cancelada' },
+  ];
+  it('canceladas vêm desmarcadas e o que falta é apontado', () => {
+    const rs = rascunhosDePrints(linhas);
+    expect(rs.map((r) => r.incluir)).toEqual([true, true, false]);
+    expect(faltaNoRascunho(rs[0])).toEqual([]);
+    expect(faltaNoRascunho(rs[1])).toEqual(['km', 'minutos']);
+    expect(rs[0].valor).toBe('23,5');
+  });
+  it('só entram as linhas completas e marcadas; não duplica', () => {
+    const rs = rascunhosDePrints(linhas);
+    rs[1] = { ...rs[1], km: '7,5', minutos: '15' }; // pessoa completou
+    const a = corridasDeRascunhos(rs, s, '99', new Set());
+    expect(a.validas).toHaveLength(2);
+    expect(a.validas[1].km).toBe(7.5);
+    expect(a.validas[0].obs).toBe('Importada de print');
+    const b = corridasDeRascunhos(rs, s, '99', new Set(a.validas.map((e) => e.id)));
+    expect(b.validas).toHaveLength(0);
+    expect(b.repetidas).toBe(2);
+  });
+  it('mesma corrida por planilha e por print tem o mesmo id', () => {
+    const viaPrint = corridasDeRascunhos(rascunhosDePrints([linhas[0]]), s, '99', new Set()).validas[0];
+    const viaPlanilha = corridaImportada({ data: new Date(2026, 9, 20, 14, 33), valor: 23.5, km: 12.4, minutos: 25 }, s, '99');
+    expect(viaPrint.id).toBe(viaPlanilha.id);
   });
 });

@@ -12,7 +12,7 @@ export const LEGAL = {
   email: 'vicxmoura@gmail.com',
   cidade: 'São Paulo/SP',
   atualizadoEm: '23 de outubro de 2026',
-  versao: '2026-10-23.4',
+  versao: '2026-10-23.5',
 };
 
 export interface LegalSection {
@@ -90,13 +90,14 @@ export const PRIVACIDADE: LegalSection[] = [
       'Dados do app: veículos, plataformas, custos, metas e o histórico de corridas que você registra. Usamos só para fazer os cálculos e mostrar seus relatórios (execução do contrato). Não usamos sua localização.',
       'Pagamento: o CPF ou CNPJ e os dados de pagamento vão direto para o Asaas, que emite a cobrança. Nós guardamos só o identificador da assinatura e a situação do pagamento (execução do contrato e obrigação legal).',
       'Prevenção a fraudes (legítimo interesse): guardamos um código irreversível (hash) do e-mail para que o teste grátis seja usado uma vez só; em caso de chargeback ou estornos repetidos, guardamos códigos irreversíveis do CPF e do e-mail para impedir novas assinaturas; e registramos as ações sensíveis da conta (assinar, cancelar, pagamentos, exclusão) com data e hora. Esses registros não contêm o CPF nem o e-mail em texto.',
+      'Importação por print (opcional): quando você envia prints do histórico de corridas, as imagens são processadas por inteligência artificial (Anthropic) só para extrair data, hora, valor, distância e duração de cada corrida. As imagens não são guardadas por nós, e nomes, endereços e outros dados pessoais que apareçam nelas não são extraídos (execução do contrato, a seu pedido).',
       'Registros técnicos: o provedor de hospedagem registra acessos (endereço IP, data e hora) por segurança, como exige o Marco Civil da Internet.',
     ],
   },
   {
     titulo: '3. Com quem compartilhamos',
     paragrafos: [
-      'Supabase (banco de dados e login), com servidores nos Estados Unidos; Asaas (cobrança); Google (somente se você escolher entrar com Google); GitHub Pages (hospedagem do app); API pública da tabela FIPE (consultas de marca, modelo e ano, sem dados pessoais).',
+      'Supabase (banco de dados e login), com servidores nos Estados Unidos; Asaas (cobrança); Google (somente se você escolher entrar com Google); GitHub Pages (hospedagem do app); Anthropic (leitura dos prints que você enviar, com servidores nos Estados Unidos); API pública da tabela FIPE (consultas de marca, modelo e ano, sem dados pessoais).',
       'Transferência internacional: como o banco de dados fica nos Estados Unidos, seus dados são transferidos para fora do Brasil, com as garantias contratuais e de segurança do fornecedor (LGPD, art. 33).',
       'Não vendemos nem alugamos seus dados, e não os usamos para publicidade.',
       'Anúncios (só no plano Grátis): os anúncios de patrocinadores são exibidos pelo próprio app, sem enviar dados seus ao anunciante. Ao tocar em um anúncio, você vai para o site do anunciante, que tem a própria política de privacidade. Também podemos exibir anúncios do Google AdSense, sempre não personalizados (sem uso do seu histórico de navegação para escolher o anúncio). Mesmo assim, o Google pode usar cookies para limitar repetições, medir resultados e combater fraudes; veja como em https://policies.google.com/technologies/ads.',

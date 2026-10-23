@@ -1,11 +1,28 @@
 import { unzipSync } from 'fflate';
 import { useMemo, useState } from 'react';
 import { brl, hm, num } from '../lib/format';
-import { detectar, montar, parseCsv, type Mapeamento, type Planilha, type UnidadeDist, type UnidadeTempo } from '../lib/importer';
+import {
+  corridasDeRascunhos,
+  detectar,
+  faltaNoRascunho,
+  montar,
+  parseCsv,
+  rascunhosDePrints,
+  type LinhaPrint,
+  type Mapeamento,
+  type Planilha,
+  type Rascunho,
+  type UnidadeDist,
+  type UnidadeTempo,
+} from '../lib/importer';
 import { DIAS_HISTORICO_GRATIS, usePlan } from '../lib/plan';
+import { useAuth } from '../auth/AuthProvider';
+import { prepararImagem } from '../lib/imagem';
+import { supabase } from '../lib/supabase';
 import { platforms } from '../lib/platforms';
 import type { HistoryEntry, Settings } from '../types';
 import { Btn, Card, Segmented } from './ui';
+import { ProTag } from './Pro';
 
 const MAX_ARQUIVO = 30 * 1024 * 1024; // 30 MB
 const MAX_DESCOMPACTADO = 20 * 1024 * 1024; // por arquivo dentro do .zip (proteção contra "zip bomba")
@@ -54,32 +71,30 @@ const CAMPOS: { id: keyof Omit<Mapeamento, 'tempo' | 'dist'>; nome: string; obri
   { id: 'valor', nome: 'Valor recebido', obrigatorio: true },
   { id: 'km', nome: 'Distância', obrigatorio: true },
   { id: 'duracao', nome: 'Duração', obrigatorio: true },
+  { id: 'fim', nome: 'Hora de término (se não houver duração)', obrigatorio: false },
   { id: 'status', nome: 'Status (para pular canceladas)', obrigatorio: false },
 ];
 
-export function ImportPanel({ s, existentes, onImport, onClose }: { s: Settings; existentes: Set<string>; onImport: (e: HistoryEntry[]) => void; onClose: () => void }) {
+function PlanilhaImport({ s, plataforma, existentes, onImport }: { s: Settings; plataforma: string; existentes: Set<string>; onImport: (e: HistoryEntry[]) => void }) {
   const { plan } = usePlan();
-  const plats = platforms(s);
-  const [plataforma, setPlataforma] = useState(s.plataformaAtiva ?? plats[0]?.id ?? '');
   const [arquivos, setArquivos] = useState<Arquivo[] | null>(null);
   const [escolhido, setEscolhido] = useState(0);
   const [mapa, setMapa] = useState<Mapeamento | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [lendo, setLendo] = useState(false);
-  const [feito, setFeito] = useState<number | null>(null);
 
   const atual = arquivos?.[escolhido] ?? null;
   const resultado = useMemo(
     () => (atual && mapa ? montar(atual.planilha, mapa, s, { plataforma, existentes }) : null),
     [atual, mapa, s, plataforma, existentes],
   );
-  const faltando = mapa ? CAMPOS.filter((c) => c.obrigatorio && mapa[c.id] === null) : [];
+  // Duração pode vir da coluna de duração OU da hora de término (fim − início)
+  const faltando = mapa ? CAMPOS.filter((c) => c.obrigatorio && mapa[c.id] === null && !(c.id === 'duracao' && mapa.fim !== null)) : [];
 
   async function abrir(f: File | undefined) {
     if (!f) return;
     setErro(null);
     setLendo(true);
-    setFeito(null);
     try {
       const lista = await lerArquivo(f);
       if (!lista.length || !lista.some((a) => a.planilha.cabecalho.length > 1)) throw new Error('Não consegui ler a planilha. Salve como CSV e tente de novo.');
@@ -105,7 +120,6 @@ export function ImportPanel({ s, existentes, onImport, onClose }: { s: Settings;
   function importar() {
     if (!resultado?.validas.length) return;
     onImport(resultado.validas);
-    setFeito(resultado.validas.length);
     setArquivos(null);
     setMapa(null);
   }
@@ -113,51 +127,9 @@ export function ImportPanel({ s, existentes, onImport, onClose }: { s: Settings;
   const antigas = resultado ? resultado.validas.filter((e) => Date.now() - new Date(e.data).getTime() > DIAS_HISTORICO_GRATIS * 86400000).length : 0;
 
   return (
-    <Card className="border-accent/60">
-      <div className="mb-2 flex items-baseline justify-between gap-2">
-        <h2 className="font-display text-xl font-semibold tracking-wide">Importar corridas</h2>
-        <button className="text-sm font-semibold text-muted hover:text-ink" onClick={onClose}>
-          Fechar
-        </button>
-      </div>
-
-      {feito !== null && (
-        <p role="status" className="mb-3 rounded-md bg-good-soft px-3 py-2 text-sm text-good">
-          {feito} {feito === 1 ? 'corrida importada' : 'corridas importadas'}. O lucro foi calculado com os custos do veículo em uso.
-        </p>
-      )}
-
+    <>
       {!arquivos ? (
         <div className="grid gap-3 text-sm">
-          <p className="text-muted">
-            Traga as corridas que você já fez, sem digitar uma por uma. Aceita a planilha (.csv) ou o arquivo .zip de dados que as plataformas enviam.
-          </p>
-          <details className="rounded-lg bg-sunk px-3 py-2">
-            <summary className="cursor-pointer font-semibold">Como conseguir o arquivo</summary>
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li>
-                <strong>Uber:</strong> na Central de Privacidade (<span className="font-mono text-xs">myprivacy.uber.com</span>) peça para baixar seus dados. Chega um .zip por
-                e-mail: envie o .zip aqui, sem abrir.
-              </li>
-              <li>
-                <strong>99, iFood, Lalamove e outras:</strong> procure no app ou no site por “baixar meus dados”, “extrato” ou “exportar”. Se vier em PDF, não dá para
-                importar.
-              </li>
-              <li>
-                <strong>Sua planilha:</strong> no Excel ou Google Planilhas, salve como CSV. Precisa ter colunas de data, valor, distância e duração.
-              </li>
-            </ul>
-          </details>
-          <label className="flex flex-col gap-1">
-            <span className="text-[13px] font-medium text-muted">Plataforma dessas corridas</span>
-            <select value={plataforma} onChange={(e) => setPlataforma(e.target.value)} className="rounded-md border border-line bg-surface px-3 py-2">
-              {plats.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                </option>
-              ))}
-            </select>
-          </label>
           <label className="cursor-pointer rounded-lg border-2 border-dashed border-line px-4 py-6 text-center font-semibold hover:bg-sunk">
             {lendo ? 'Lendo o arquivo…' : 'Escolher arquivo (.csv ou .zip)'}
             <input
@@ -320,7 +292,7 @@ export function ImportPanel({ s, existentes, onImport, onClose }: { s: Settings;
           </div>
         )
       )}
-    </Card>
+    </>
   );
 }
 
@@ -328,4 +300,310 @@ function resumo(motivos: string[]): string {
   const c = new Map<string, number>();
   for (const m of motivos) c.set(m, (c.get(m) ?? 0) + 1);
   return [...c.entries()].map(([m, n]) => `${n} ${m}`).join(', ');
+}
+
+/* ---------- Como cada plataforma deixa o motorista pegar o histórico (pesquisado em out/2026) ---------- */
+
+interface Ajuda {
+  planilha: string;
+  print: string;
+  /** a plataforma não oferece planilha ao motorista: abrir já na aba de prints */
+  soPrint?: boolean;
+}
+
+const AJUDA: Record<string, Ajuda> = {
+  uber: {
+    planilha:
+      'Duas opções. 1) Extrato semanal: em drivers.uber.com → Rendimentos → Extratos, abra a semana e toque em “Baixar CSV” (uma semana por vez; pode não trazer km e tempo). 2) Histórico completo: peça seus dados na Central de Privacidade da Uber (no app ou em myprivacy.uber.com). Chega um .zip por e-mail com as viagens (início, fim, distância e valor): envie o .zip aqui sem abrir.',
+    print: 'No app Uber Driver, abra Ganhos (ou Atividades) e a lista de viagens da semana. Tire prints rolando a tela.',
+  },
+  uber_flash: {
+    planilha:
+      'Igual à Uber: extrato semanal em drivers.uber.com → Rendimentos → Extratos → “Baixar CSV”, ou o .zip completo pedido na Central de Privacidade da Uber.',
+    print: 'No app Uber Driver, abra Ganhos (ou Atividades) e a lista de entregas da semana.',
+  },
+  '99': {
+    planilha:
+      'O app da 99 não tem botão de exportar para o motorista. Dá para pedir o “extrato de corridas” ao suporte (Ajuda), que chega por e-mail, mas costuma vir como resumo. Se vier planilha, importe aqui; se não, use prints.',
+    print: 'No app 99 Motorista, abra a Carteira e o histórico de corridas. Tire prints rolando a lista.',
+    soPrint: true,
+  },
+  '99_entrega': {
+    planilha: 'A 99 não oferece exportação para o entregador. Use prints do histórico.',
+    print: 'No app, abra a Carteira e o histórico de entregas.',
+    soPrint: true,
+  },
+  ifood: {
+    planilha: 'O app iFood para Entregadores não exporta planilha nem PDF do extrato. Use prints.',
+    print: 'No app iFood para Entregadores, abra o Extrato (com entregas, distâncias e tempo) e tire prints.',
+    soPrint: true,
+  },
+  lalamove: {
+    planilha:
+      'O app do motorista parceiro mostra o histórico na Carteira, mas não tem exportação confirmada. Atenção: o “Carteira → Declaração” do site da Lalamove é do painel de clientes e empresas, não do motorista.',
+    print: 'No app Lalamove do motorista, abra a Carteira → histórico de pedidos/transações e tire prints.',
+    soPrint: true,
+  },
+  indrive: {
+    planilha: 'O inDrive não fornece relatório de ganhos ao motorista. Use prints.',
+    print: 'No app, abra o Histórico de corridas e tire prints. O histórico fica disponível por tempo limitado: importe com frequência.',
+    soPrint: true,
+  },
+};
+
+const AJUDA_PADRAO: Ajuda = {
+  planilha: 'Procure no app ou no site da plataforma por “baixar meus dados”, “extrato” ou “exportar”. Ou use sua própria planilha: no Excel ou Google Planilhas, salve como CSV com colunas de data, valor, distância e duração.',
+  print: 'Abra o histórico de corridas ou entregas no app da plataforma e tire prints rolando a lista.',
+};
+
+type Modo = 'planilha' | 'print';
+
+export function ImportPanel({ s, existentes, onImport, onClose }: { s: Settings; existentes: Set<string>; onImport: (e: HistoryEntry[]) => void; onClose: () => void }) {
+  const plats = platforms(s);
+  const [plataforma, setPlataforma] = useState(s.plataformaAtiva ?? plats[0]?.id ?? '');
+  const ajuda = AJUDA[plataforma] ?? AJUDA_PADRAO;
+  const [modo, setModo] = useState<Modo>(ajuda.soPrint ? 'print' : 'planilha');
+  const [feito, setFeito] = useState<number | null>(null);
+
+  function importar(novas: HistoryEntry[]) {
+    onImport(novas);
+    setFeito(novas.length);
+  }
+
+  return (
+    <Card className="border-accent/60">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <h2 className="font-display text-xl font-semibold tracking-wide">Importar corridas</h2>
+        <button className="text-sm font-semibold text-muted hover:text-ink" onClick={onClose}>
+          Fechar
+        </button>
+      </div>
+      <p className="mb-3 text-sm text-muted">Traga as corridas que você já fez, sem digitar uma por uma.</p>
+
+      {feito !== null && (
+        <p role="status" className="mb-3 rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          {feito} {feito === 1 ? 'corrida importada' : 'corridas importadas'}. O lucro foi calculado com os custos do veículo em uso.
+        </p>
+      )}
+
+      <div className="mb-3 grid gap-3 text-sm">
+        <label className="flex flex-col gap-1">
+          <span className="text-[13px] font-medium text-muted">Plataforma dessas corridas</span>
+          <select
+            value={plataforma}
+            onChange={(e) => {
+              setPlataforma(e.target.value);
+              if ((AJUDA[e.target.value] ?? AJUDA_PADRAO).soPrint) setModo('print');
+            }}
+            className="rounded-md border border-line bg-surface px-3 py-2"
+          >
+            {plats.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Segmented<Modo>
+          label="Como importar"
+          value={modo}
+          onChange={setModo}
+          options={[
+            { value: 'print', label: '📸 Prints da tela' },
+            { value: 'planilha', label: '📄 Planilha / .zip' },
+          ]}
+        />
+        <div className="rounded-lg bg-sunk px-3 py-2">
+          <strong>Como conseguir:</strong> {modo === 'print' ? ajuda.print : ajuda.planilha}
+          <span className="mt-1 block text-xs text-muted">Os menus podem mudar conforme a versão do app da plataforma.</span>
+        </div>
+      </div>
+
+      {modo === 'planilha' ? (
+        <PlanilhaImport s={s} plataforma={plataforma} existentes={existentes} onImport={importar} />
+      ) : (
+        <PrintsImport s={s} plataforma={plataforma} existentes={existentes} onImport={importar} />
+      )}
+    </Card>
+  );
+}
+
+/* ---------- Prints: a IA lê, a pessoa confere e completa ---------- */
+
+const MAX_PRINTS = 5;
+
+function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; plataforma: string; existentes: Set<string>; onImport: (e: HistoryEntry[]) => void }) {
+  const auth = useAuth();
+  const { plan, upgrade } = usePlan();
+  const [lendo, setLendo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [restantes, setRestantes] = useState<number | null>(null);
+  const [linhas, setLinhas] = useState<Rascunho[] | null>(null);
+
+  const pronto = useMemo(() => (linhas ? corridasDeRascunhos(linhas, s, plataforma, existentes) : null), [linhas, s, plataforma, existentes]);
+  const incompletas = linhas ? linhas.filter((l) => l.incluir && faltaNoRascunho(l).length > 0).length : 0;
+
+  if (!auth.user || !supabase) {
+    return (
+      <p className="rounded-md bg-warn-soft px-3 py-2 text-sm">
+        Para ler prints, entre na sua conta (a leitura é feita no servidor). Sem conta, use a aba Planilha.
+      </p>
+    );
+  }
+
+  async function enviar(files: FileList | null) {
+    if (!files?.length) return;
+    const lista = [...files].slice(0, MAX_PRINTS);
+    setErro(null);
+    setAviso(null);
+    setLendo(true);
+    try {
+      const imagens = await Promise.all(lista.map(prepararImagem));
+      const { data, error } = await supabase!.functions.invoke('ler-print', { body: { plataforma, imagens } });
+      if (error) {
+        let msg = 'Não foi possível ler os prints agora. Tente de novo.';
+        try {
+          const j = await (error as { context?: Response }).context?.json();
+          if (j?.error) msg = j.error;
+        } catch {
+          /* sem corpo */
+        }
+        throw new Error(msg);
+      }
+      const r = data as { corridas: LinhaPrint[]; aviso: string | null; restantes: number };
+      setRestantes(r.restantes);
+      setAviso(r.aviso);
+      if (!r.corridas.length) {
+        setErro(r.aviso ?? 'Não encontrei corridas nesses prints. Confira se é a tela do histórico.');
+        return;
+      }
+      // Junta com o que já foi lido antes (a pessoa pode enviar a lista em partes)
+      setLinhas((cur) => {
+        const novos = rascunhosDePrints(r.corridas).map((x, i) => ({ ...x, chave: `${Date.now()}-${i}` }));
+        return [...(cur ?? []), ...novos];
+      });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não consegui ler os prints.');
+    } finally {
+      setLendo(false);
+    }
+  }
+
+  function mudar(chave: string, patch: Partial<Rascunho>) {
+    setLinhas((cur) => cur?.map((l) => (l.chave === chave ? { ...l, ...patch } : l)) ?? null);
+  }
+
+  return (
+    <div className="grid gap-3 text-sm">
+      <label className={`cursor-pointer rounded-lg border-2 border-dashed border-line px-4 py-6 text-center font-semibold hover:bg-sunk ${lendo ? 'pointer-events-none opacity-60' : ''}`}>
+        {lendo ? 'Lendo os prints… (uns 10 a 30 segundos)' : linhas ? `+ Adicionar mais prints (até ${MAX_PRINTS} por vez)` : `Escolher prints (até ${MAX_PRINTS} por vez)`}
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            void enviar(e.target.files);
+            e.target.value = '';
+          }}
+        />
+      </label>
+      <p className="-mt-1 text-xs text-muted">
+        Os prints são lidos por inteligência artificial só para extrair data, valor, km e tempo de cada corrida. Nomes e endereços não são guardados nem devolvidos.
+        {!plan.pro && (
+          <>
+            {' '}
+            No plano Grátis são 3 envios a cada 30 dias.{' '}
+            <button className="font-semibold text-accent" onClick={upgrade}>
+              <ProTag /> libera 40 por dia
+            </button>
+          </>
+        )}
+        {restantes !== null && ` Envios restantes: ${restantes}.`}
+      </p>
+
+      {erro && (
+        <p role="alert" className="rounded-md bg-bad-soft px-3 py-2 text-bad">
+          {erro}
+        </p>
+      )}
+      {aviso && !erro && <p className="rounded-md bg-warn-soft px-3 py-2">{aviso}</p>}
+
+      {linhas && linhas.length > 0 && (
+        <div>
+          <h3 className="mb-1 font-semibold">Confira antes de importar</h3>
+          <p className="mb-2 text-xs text-muted">
+            Corrija o que a leitura errou. Campos em vermelho estão faltando: muitos apps não mostram km ou tempo na lista; abra a corrida no app para ver, ou desmarque a linha.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="tnum w-full min-w-[560px] text-xs">
+              <thead>
+                <tr className="border-b border-line text-left text-muted">
+                  <th className="py-1 pr-1">✓</th>
+                  <th className="py-1 pr-1">Data</th>
+                  <th className="py-1 pr-1">Hora</th>
+                  <th className="py-1 pr-1">Valor (R$)</th>
+                  <th className="py-1 pr-1">Km</th>
+                  <th className="py-1 pr-1">Min</th>
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map((l) => {
+                  const falta = l.incluir ? faltaNoRascunho(l) : [];
+                  const cls = (campo: string) =>
+                    `w-full rounded border bg-surface px-1.5 py-1 ${falta.includes(campo) ? 'border-bad' : 'border-line'} ${l.incluir ? '' : 'opacity-50'}`;
+                  return (
+                    <tr key={l.chave} className="border-b border-line/60">
+                      <td className="py-1 pr-1">
+                        <input type="checkbox" aria-label="Importar esta corrida" checked={l.incluir} onChange={(e) => mudar(l.chave, { incluir: e.target.checked })} />
+                        {l.cancelada && <span className="ml-1 text-[10px] text-bad">cancelada</span>}
+                      </td>
+                      <td className="py-1 pr-1">
+                        <input type="date" className={cls('data')} value={l.data} onChange={(e) => mudar(l.chave, { data: e.target.value })} />
+                      </td>
+                      <td className="py-1 pr-1">
+                        <input type="time" className={cls('hora')} value={l.hora} onChange={(e) => mudar(l.chave, { hora: e.target.value })} />
+                      </td>
+                      <td className="py-1 pr-1">
+                        <input inputMode="decimal" className={cls('valor')} value={l.valor} onChange={(e) => mudar(l.chave, { valor: e.target.value })} />
+                      </td>
+                      <td className="py-1 pr-1">
+                        <input inputMode="decimal" className={cls('km')} value={l.km} placeholder="?" onChange={(e) => mudar(l.chave, { km: e.target.value })} />
+                      </td>
+                      <td className="py-1 pr-1">
+                        <input inputMode="numeric" className={cls('minutos')} value={l.minutos} placeholder="?" onChange={(e) => mudar(l.chave, { minutos: e.target.value })} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <ul className="mt-2 text-sm">
+            <li>
+              ✅ <strong>{pronto?.validas.length ?? 0}</strong> prontas para importar
+            </li>
+            {incompletas > 0 && <li>✏️ {incompletas} marcadas mas incompletas (complete ou desmarque)</li>}
+            {(pronto?.repetidas ?? 0) > 0 && <li>↩️ {pronto!.repetidas} já estavam no histórico</li>}
+          </ul>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Btn
+              kind="primary"
+              disabled={!pronto?.validas.length}
+              onClick={() => {
+                if (!pronto?.validas.length) return;
+                onImport(pronto.validas);
+                setLinhas(null);
+                setRestantes(null);
+              }}
+            >
+              Importar {pronto?.validas.length ?? 0} corridas
+            </Btn>
+            <Btn onClick={() => setLinhas(null)}>Descartar</Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

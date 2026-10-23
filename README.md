@@ -83,6 +83,7 @@ Use como motorista de verdade e anote aqui embaixo, com data, tudo que travar, c
 - [ ] No fim da semana: o **Histórico** mostra um lucro parecido com o que sobrou de verdade no bolso?
 - [ ] Importar um print do histórico de alguma plataforma e conferir a leitura.
 - [ ] Mandar o link para 2 ou 3 motoristas e anotar as dúvidas deles.
+- [ ] Olhar a tabela `feedback` no Supabase e o WhatsApp no fim da semana.
 
 **Anotações da semana:**
 - _(escreva aqui)_
@@ -90,6 +91,22 @@ Use como motorista de verdade e anote aqui embaixo, com data, tudo que travar, c
 ### 📣 Texto para indicar o app
 
 > Você sabe quanto sobra de verdade em cada corrida? O **Vale a Corrida?** calcula na hora o lucro real de cada oferta da Uber, 99, iFood, Lalamove e outros: desconta combustível, manutenção e desgaste do carro e mostra 🟢 vale a pena, 🟡 lucro baixo ou 🔴 prejuízo. É grátis e funciona no celular como app: https://valeacorrida.app.br
+
+## 💬 Ajuda e feedback dos usuários
+
+O link **"Ajuda e feedback"** fica no rodapé de todas as telas (e em Ajustes → "Relatar um problema"). A pessoa escolhe:
+
+- **WhatsApp (11) 97652-0065**: abre a conversa já com uma mensagem pronta contendo a versão do app, a tela, o tipo de celular, se está instalado e o plano. Para trocar o número, mude `WHATSAPP_SUPORTE` em [`src/components/HelpScreen.tsx`](src/components/HelpScreen.tsx).
+- **Formulário no app** (problema, sugestão, elogio ou outro), com contato opcional para resposta.
+
+**Onde ler as mensagens do formulário:** Supabase → **Table Editor → `feedback`**. Use a coluna `resolvido` (marque `true`) e `anotacao` para organizar. Ou no SQL Editor:
+
+```sql
+select criado_em, tipo, mensagem, contato, contexto
+  from public.feedback where not resolvido order by criado_em desc;
+```
+
+Proteções: o envio passa pelo servidor (função `feedback`), no máximo 5 mensagens por hora por origem e 10 por dia por conta, até 2.000 caracteres; o endereço de internet é guardado só como código irreversível.
 
 ## 💸 Custo da leitura por print (decisão de 23/10/2026)
 

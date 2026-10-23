@@ -4,6 +4,7 @@ import { AccountScreen, STATUS_TEXT } from './components/AccountScreen';
 import { AuthScreen, NewPasswordScreen } from './components/AuthScreen';
 import { Calculator } from './components/Calculator';
 import { Goals } from './components/Goals';
+import { HelpScreen } from './components/HelpScreen';
 import { LegalLinks, LegalScreen, type LegalDoc } from './components/LegalScreen';
 import { Onboarding } from './components/Onboarding';
 import { Tour, TUTORIAL } from './components/Tour';
@@ -58,9 +59,15 @@ function Main({ uid }: { uid: string | null }) {
   const app = useAppData(uid);
   const planLoader = usePlanLoader(uid);
   const plan = planLoader.plan;
-  type Screen = 'app' | 'login' | 'conta' | 'plano' | 'legal';
+  type Screen = 'app' | 'login' | 'conta' | 'plano' | 'legal' | 'ajuda';
   const [screen, setScreen] = useState<Screen>('app');
   const [legal, setLegal] = useState<{ doc: LegalDoc; from: Screen }>({ doc: 'termos', from: 'app' });
+  const [telaAjuda, setTelaAjuda] = useState('corrida'); // de qual aba a pessoa pediu ajuda (vai no relato)
+  const openAjuda = (tela: string) => {
+    setTelaAjuda(screen === 'app' ? tela : screen);
+    setScreen('ajuda');
+    window.scrollTo({ top: 0 });
+  };
   const openLegal = (doc: LegalDoc) => {
     setLegal({ doc, from: screen === 'legal' ? legal.from : screen });
     setScreen('legal');
@@ -138,11 +145,19 @@ function Main({ uid }: { uid: string | null }) {
       onAccount={() => setScreen(uid ? 'conta' : 'login')}
       closeOverlay={() => setScreen('app')}
       onLegal={openLegal}
+      onAjuda={openAjuda}
       overlay={
         screen === 'login' && !uid ? (
           <AuthScreen onClose={() => setScreen('app')} onLegal={openLegal} />
         ) : screen === 'conta' && uid ? (
           <AccountScreen status={app.status} hasPending={app.hasPending} forgetDevice={app.forgetDevice} onBack={() => setScreen('app')} />
+        ) : screen === 'ajuda' ? (
+          <HelpScreen
+            tela={telaAjuda}
+            plataforma={app.data.settings.plataformas.find((p) => p.id === app.data!.settings.plataformaAtiva)?.nome}
+            veiculo={app.data.settings.veiculos.length ? app.data.settings.veiculo.nome : undefined}
+            onBack={() => setScreen('app')}
+          />
         ) : screen === 'legal' ? (
           <LegalScreen doc={legal.doc} onDoc={(doc) => setLegal({ ...legal, doc })} onBack={() => setScreen(legal.from)} />
         ) : screen === 'plano' ? (
@@ -227,11 +242,12 @@ interface ShellProps {
   onAccount: () => void;
   closeOverlay: () => void;
   onLegal: (d: LegalDoc) => void;
+  onAjuda: (tela: string) => void;
   overlay: ReactNode;
   banner: ReactNode;
 }
 
-function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer, history, setHistory, statusText, statusBad, accountLabel, onAccount, closeOverlay, onLegal, overlay, banner }: ShellProps) {
+function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer, history, setHistory, statusText, statusBad, accountLabel, onAccount, closeOverlay, onLegal, onAjuda, overlay, banner }: ShellProps) {
   const [tab, setTab] = useState<Tab>(() => {
     const h = typeof location !== 'undefined' ? location.hash.slice(1) : '';
     return (TABS.some((t) => t.id === h) ? h : 'corrida') as Tab;
@@ -381,7 +397,7 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
         )}
         {tab === 'metas' && <Goals s={settings} setSettings={setSettings} hist={hist} />}
         {tab === 'historico' && <History s={settings} history={visible} setHistory={setVisible} draft={draft} setDraft={setDraft} hiddenCount={hidden.length} allIds={allIds} />}
-        {tab === 'ajustes' && <SettingsPanel s={settings} setSettings={setSettings} history={history} setHistory={setHistory} cloud={accountLabel === 'Conta'} onTutorial={() => {
+        {tab === 'ajustes' && <SettingsPanel s={settings} setSettings={setSettings} history={history} setHistory={setHistory} cloud={accountLabel === 'Conta'} onAjuda={() => onAjuda('ajustes')} onTutorial={() => {
           setSettings({ ...settings, tutorialVisto: false });
           goTab('corrida');
         }} />}
@@ -390,6 +406,10 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
           </>
         )}
         <footer className="mt-10 border-t border-line pt-4 text-center text-xs text-muted">
+          <button onClick={() => onAjuda(tab)} className="font-semibold text-accent underline-offset-2 hover:underline">
+            Ajuda e feedback
+          </button>
+          <span className="mx-2">·</span>
           <a href="./guias/" className="font-semibold text-accent underline-offset-2 hover:underline">
             Guias para motoristas
           </a>

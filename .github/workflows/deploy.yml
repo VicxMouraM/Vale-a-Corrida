@@ -33,6 +33,8 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
           VITE_ADS: ${{ vars.VITE_ADS }}
+          # versão = commit publicado (aparece nos relatos de problema)
+          VITE_VERSAO: ${{ github.sha }}
           VITE_ADSENSE_CLIENT: ${{ vars.VITE_ADSENSE_CLIENT }}
           VITE_ADSENSE_SLOT: ${{ vars.VITE_ADSENSE_SLOT }}
       - uses: actions/upload-pages-artifact@v3

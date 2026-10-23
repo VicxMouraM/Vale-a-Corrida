@@ -4,6 +4,7 @@ import App from './App';
 import { AuthProvider } from './auth/AuthProvider';
 import { Calculator } from './components/Calculator';
 import { Goals } from './components/Goals';
+import { HelpScreen } from './components/HelpScreen';
 import { ImportPanel, lerArquivo, melhorArquivo } from './components/ImportPanel';
 import { QuickOffer } from './components/QuickOffer';
 import { strToU8, zipSync } from 'fflate';
@@ -137,6 +138,19 @@ describe('telas', () => {
     const lista = await lerArquivo(new File([zip], 'dados.zip'));
     expect(lista.map((a) => a.nome).sort()).toEqual(['perfil.csv', 'viagens.csv']);
     expect(lista[melhorArquivo(lista)].nome).toBe('viagens.csv');
+  });
+
+  it('ajuda e feedback: WhatsApp do suporte com mensagem pronta e formulário', () => {
+    const html = withPlan(
+      FREE_PLAN,
+      <AuthProvider>
+        <HelpScreen tela="historico" plataforma="Uber" onBack={noop} />
+      </AuthProvider>,
+    );
+    expect(html).toContain('https://wa.me/5511976520065?text=');
+    expect(decodeURIComponent(html.match(/wa\.me\/5511976520065\?text=([^"&]+)/)![1])).toContain('tela Histórico');
+    expect(html).toContain('Ou escreva aqui');
+    expect(html).toContain('Problema');
   });
 
   it('termos e privacidade', () => {

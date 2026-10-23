@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY?: string;
   readonly VITE_TURNSTILE_SITE_KEY?: string;
   readonly VITE_ADS?: string;
+  readonly VITE_VERSAO?: string;
   readonly VITE_ADSENSE_CLIENT?: string;
   readonly VITE_ADSENSE_SLOT?: string;
 }

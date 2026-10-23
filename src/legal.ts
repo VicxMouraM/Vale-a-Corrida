@@ -12,7 +12,7 @@ export const LEGAL = {
   email: 'vicxmoura@gmail.com',
   cidade: 'São Paulo/SP',
   atualizadoEm: '23 de outubro de 2026',
-  versao: '2026-10-23.5',
+  versao: '2026-10-23.6',
 };
 
 export interface LegalSection {
@@ -91,6 +91,7 @@ export const PRIVACIDADE: LegalSection[] = [
       'Pagamento: o CPF ou CNPJ e os dados de pagamento vão direto para o Asaas, que emite a cobrança. Nós guardamos só o identificador da assinatura e a situação do pagamento (execução do contrato e obrigação legal).',
       'Prevenção a fraudes (legítimo interesse): guardamos um código irreversível (hash) do e-mail para que o teste grátis seja usado uma vez só; em caso de chargeback ou estornos repetidos, guardamos códigos irreversíveis do CPF e do e-mail para impedir novas assinaturas; e registramos as ações sensíveis da conta (assinar, cancelar, pagamentos, exclusão) com data e hora. Esses registros não contêm o CPF nem o e-mail em texto.',
       'Importação por print (opcional): quando você envia prints do histórico de corridas, as imagens são processadas por inteligência artificial (Anthropic) só para extrair data, hora, valor, distância e duração de cada corrida. As imagens não são guardadas por nós, e nomes, endereços e outros dados pessoais que apareçam nelas não são extraídos (execução do contrato, a seu pedido).',
+      'Ajuda e feedback (opcional): quando você envia uma mensagem pelo app, guardamos o texto, o tipo, o contato que você informar e, se você deixar marcado, informações técnicas (versão do app, tela, tipo de celular e navegador). Usamos só para responder e corrigir problemas. Pelo WhatsApp, vale a política do próprio WhatsApp.',
       'Registros técnicos: o provedor de hospedagem registra acessos (endereço IP, data e hora) por segurança, como exige o Marco Civil da Internet.',
     ],
   },

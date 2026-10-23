@@ -15,9 +15,11 @@ export interface Plan {
   billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' | null;
   /** conta bloqueada por chargeback ou estornos repetidos */
   bloqueado: boolean;
+  /** Pro de cortesia (dona do app, parceiros): sem cobrança, não depende da assinatura */
+  cortesia: boolean;
 }
 
-export const FREE_PLAN: Plan = { pro: false, status: 'free', trialEndsAt: null, periodEnd: null, billingType: null, bloqueado: false };
+export const FREE_PLAN: Plan = { pro: false, status: 'free', trialEndsAt: null, periodEnd: null, billingType: null, bloqueado: false, cortesia: false };
 
 /** Só para mostrar ou esconder telas. Quem garante o acesso de verdade é o banco (RLS). */
 export function usePlanLoader(uid: string | null) {
@@ -29,8 +31,8 @@ export function usePlanLoader(uid: string | null) {
     const { data, error } = await supabase.rpc('get_my_plan');
     setLoading(false);
     if (error || !data) return;
-    const d = data as { pro: boolean; status: PlanStatus; trial_ends_at: string | null; current_period_end: string | null; billing_type: Plan['billingType']; bloqueado?: boolean };
-    setPlan({ pro: !!d.pro, status: d.status, trialEndsAt: d.trial_ends_at, periodEnd: d.current_period_end, billingType: d.billing_type, bloqueado: !!d.bloqueado });
+    const d = data as { pro: boolean; status: PlanStatus; trial_ends_at: string | null; current_period_end: string | null; billing_type: Plan['billingType']; bloqueado?: boolean; cortesia?: boolean };
+    setPlan({ pro: !!d.pro, status: d.status, trialEndsAt: d.trial_ends_at, periodEnd: d.current_period_end, billingType: d.billing_type, bloqueado: !!d.bloqueado, cortesia: !!d.cortesia });
   }, [uid]);
 
   useEffect(() => {
@@ -84,6 +86,7 @@ export function daysLeft(iso: string | null, now = new Date()): number {
 /** Texto curto para o selo no topo. */
 export function planBadge(p: Plan): string {
   if (!p.pro) return 'Grátis';
+  if (p.cortesia) return 'Pro';
   if (p.status === 'trial' || (p.trialEndsAt && !p.periodEnd)) {
     const d = daysLeft(p.trialEndsAt);
     return `Teste Pro · ${d} ${d === 1 ? 'dia' : 'dias'}`;

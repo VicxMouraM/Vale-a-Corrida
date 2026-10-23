@@ -110,6 +110,23 @@ select criado_em, tipo, mensagem, contato, contexto
 
 Proteções: o envio passa pelo servidor (função `feedback`), no máximo 5 mensagens por hora por origem e 10 por dia por conta, até 2.000 caracteres; o endereço de internet é guardado só como código irreversível.
 
+## 🎁 Pro de cortesia (sem cobrança)
+
+A conta **vicxmoura@gmail.com** (dona do app) tem **Pro permanente por cortesia**. A cortesia é separada da assinatura: cancelamento, webhook do Asaas e a rotina automática não mexem nela, e só o servidor pode alterá-la. Também vale para parceiros ou testadores. No Supabase → SQL Editor:
+
+```sql
+-- dar cortesia
+update public.subscriptions set cortesia = true, cortesia_motivo = 'parceiro X'
+ where user_id = (select id from auth.users where lower(email) = 'pessoa@exemplo.com');
+-- tirar cortesia
+update public.subscriptions set cortesia = false
+ where user_id = (select id from auth.users where lower(email) = 'pessoa@exemplo.com');
+-- quem tem cortesia
+select u.email, s.cortesia_motivo from public.subscriptions s join auth.users u on u.id = s.user_id where s.cortesia;
+```
+
+A pessoa precisa ter criado a conta antes. Com cortesia, ela tem tudo do Pro (inclusive os 100 prints por mês) e não vê anúncios.
+
 ## 💸 Custo da leitura por print (decisão de 23/10/2026)
 
 | | Grátis | Pro |

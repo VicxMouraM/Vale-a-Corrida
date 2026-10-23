@@ -102,6 +102,14 @@ describe('telas', () => {
     expect(html).not.toContain('CPF ou CNPJ');
   });
 
+  it('cortesia: mostra Pro sem cobrança e esconde assinar/cancelar', () => {
+    const cortesia = { ...PRO, cortesia: true, status: 'canceled' as const, billingType: 'PIX' as const };
+    const html = withPlan(cortesia, <PlanScreen plan={cortesia} loggedIn onLogin={noop} onBack={noop} refresh={async () => undefined} />);
+    expect(html).toContain('Pro liberado por cortesia');
+    expect(html).not.toContain('CPF ou CNPJ');
+    expect(html).not.toContain('Cancelar assinatura');
+  });
+
   it('pro tem "sem anúncios" entre os benefícios', () => {
     expect(withPlan(FREE_PLAN, <PlanScreen plan={FREE_PLAN} loggedIn onLogin={noop} onBack={noop} refresh={async () => undefined} />)).toContain('Sem anúncios');
   });

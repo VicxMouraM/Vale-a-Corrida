@@ -129,7 +129,7 @@ export function PlanScreen({ plan, loggedIn, onLogin, onBack, refresh, nomeConta
             Criar conta ou entrar
           </Btn>
         </Card>
-      ) : plan.bloqueado ? (
+      ) : plan.cortesia ? null : plan.bloqueado ? (
         <Card className="border-bad/40">
           <h2 className="mb-1 font-display text-xl font-semibold tracking-wide text-bad">Assinatura indisponível</h2>
           <p className="text-sm">
@@ -188,7 +188,7 @@ export function PlanScreen({ plan, loggedIn, onLogin, onBack, refresh, nomeConta
         </Card>
       )}
 
-      {loggedIn && podeCancelar && (
+      {loggedIn && podeCancelar && !plan.cortesia && (
         <Card>
           <h2 className="mb-1 font-display text-xl font-semibold tracking-wide">Cancelar assinatura</h2>
           <p className="mb-3 text-sm text-muted">
@@ -233,6 +233,9 @@ function Situacao({ plan }: { plan: Plan }) {
   const now = new Date();
   let texto: string;
   let tom = 'text-muted';
+  if (plan.cortesia) {
+    return <p className="mt-1 text-sm text-good">Pro liberado por cortesia, sem cobrança e sem data para acabar.</p>;
+  }
   if (plan.status === 'active' && plan.periodEnd && new Date(plan.periodEnd) > now) {
     texto = `Assinatura ativa. Renova em ${fmtData(plan.periodEnd)}.`;
     tom = 'text-good';

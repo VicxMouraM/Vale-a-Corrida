@@ -249,5 +249,5 @@ Aparecem só para quem não é Pro, na calculadora e no histórico, com a etique
    npx supabase secrets set ANTHROPIC_API_KEY='sk-ant-...' --project-ref SEU-PROJECT-REF
    npx supabase functions deploy ler-print --project-ref SEU-PROJECT-REF
    ```
-4. Limites por usuário (custo sob controle): Grátis 3 envios a cada 30 dias; Pro 40 por dia; até 5 prints por envio. Os prints são reduzidos no celular antes de enviar.
+4. Limites por usuário (custo sob controle), decididos no servidor: **Grátis 1 print a cada 30 dias**; **Pro 40 envios por dia, até 5 prints cada**. Os prints são reduzidos no celular antes de enviar.
 5. Custo aproximado: alguns centavos de dólar por envio. Acompanhe em console.anthropic.com → Usage.

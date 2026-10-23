@@ -432,6 +432,15 @@ export function ImportPanel({ s, existentes, onImport, onClose }: { s: Settings;
 
 const MAX_PRINTS = 5;
 
+interface Cota {
+  pro: boolean;
+  usados: number;
+  limite: number;
+  restantes: number;
+  printsPorEnvio: number;
+  liberaEm: string | null;
+}
+
 function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; plataforma: string; existentes: Set<string>; onImport: (e: HistoryEntry[]) => void }) {
   const auth = useAuth();
   const { plan, upgrade } = usePlan();
@@ -440,19 +449,27 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
   const [aviso, setAviso] = useState<string | null>(null);
   const [restantes, setRestantes] = useState<number | null>(null);
   const [linhas, setLinhas] = useState<Rascunho[] | null>(null);
-  // A leitura por IA só funciona quando o servidor tem a chave configurada
+  // A leitura por IA só funciona quando o servidor tem a chave configurada; o servidor também diz quanto falta da cota
   const [disponivel, setDisponivel] = useState<boolean | null>(null);
-  useEffect(() => {
-    if (!auth.user || !supabase) return;
+  const [cota, setCota] = useState<Cota | null>(null);
+  const consultar = () => {
+    if (!auth.user || !supabase) return () => undefined;
     let vivo = true;
     supabase.functions
       .invoke('ler-print', { method: 'GET' })
-      .then(({ data }) => vivo && setDisponivel(!!(data as { disponivel?: boolean } | null)?.disponivel))
+      .then(({ data }) => {
+        if (!vivo) return;
+        const d = data as ({ disponivel?: boolean } & Partial<Cota>) | null;
+        setDisponivel(!!d?.disponivel);
+        if (d && typeof d.restantes === 'number') setCota(d as Cota);
+      })
       .catch(() => vivo && setDisponivel(false));
     return () => {
       vivo = false;
     };
-  }, [auth.user]);
+  };
+  useEffect(consultar, [auth.user]); // eslint-disable-line react-hooks/exhaustive-deps
+  const porEnvio = cota?.printsPorEnvio ?? (plan.pro ? MAX_PRINTS : 1);
 
   const pronto = useMemo(() => (linhas ? corridasDeRascunhos(linhas, s, plataforma, existentes) : null), [linhas, s, plataforma, existentes]);
   const incompletas = linhas ? linhas.filter((l) => l.incluir && faltaNoRascunho(l).length > 0).length : 0;
@@ -477,7 +494,7 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
 
   async function enviar(files: FileList | null) {
     if (!files?.length) return;
-    const lista = [...files].slice(0, MAX_PRINTS);
+    const lista = [...files].slice(0, porEnvio);
     setErro(null);
     setAviso(null);
     setLendo(true);
@@ -496,6 +513,7 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
       }
       const r = data as { corridas: LinhaPrint[]; aviso: string | null; restantes: number };
       setRestantes(r.restantes);
+      consultar(); // atualiza a cota (e a data em que libera de novo)
       setAviso(r.aviso);
       if (!r.corridas.length) {
         setErro(r.aviso ?? 'Não encontrei corridas nesses prints. Confira se é a tela do histórico.');
@@ -517,33 +535,56 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
     setLinhas((cur) => cur?.map((l) => (l.chave === chave ? { ...l, ...patch } : l)) ?? null);
   }
 
+  const esgotado = cota !== null && cota.restantes <= 0;
+  const libera = cota?.liberaEm ? new Date(cota.liberaEm).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : null;
+
   return (
     <div className="grid min-w-0 gap-3 text-sm [&>*]:min-w-0">
-      <label className={`cursor-pointer rounded-lg border-2 border-dashed border-line px-4 py-6 text-center font-semibold hover:bg-sunk ${lendo ? 'pointer-events-none opacity-60' : ''}`}>
-        {lendo ? 'Lendo os prints… (uns 10 a 30 segundos)' : linhas ? `+ Adicionar mais prints (até ${MAX_PRINTS} por vez)` : `Escolher prints (até ${MAX_PRINTS} por vez)`}
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            void enviar(e.target.files);
-            e.target.value = '';
-          }}
-        />
-      </label>
+      {esgotado && !cota!.pro ? (
+        <div className="rounded-lg border border-dashed border-accent/50 px-4 py-4">
+          <div className="mb-1 flex items-center gap-2 font-semibold">
+            <ProTag /> Você já usou o print grátis destes 30 dias
+          </div>
+          <p className="mb-3 text-muted">{libera ? `O próximo libera em ${libera}. ` : ''}No Pro, você importa até 5 prints por vez, 40 vezes por dia.</p>
+          <button onClick={upgrade} className="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink">
+            Assinar o Pro
+          </button>
+        </div>
+      ) : esgotado ? (
+        <p className="rounded-md bg-warn-soft px-3 py-2">Você chegou ao limite de 40 envios de prints hoje. Volte amanhã.</p>
+      ) : (
+        <label className={`cursor-pointer rounded-lg border-2 border-dashed border-line px-4 py-6 text-center font-semibold hover:bg-sunk ${lendo ? 'pointer-events-none opacity-60' : ''}`}>
+          {lendo
+            ? 'Lendo… (uns 10 a 30 segundos)'
+            : porEnvio === 1
+              ? 'Escolher 1 print'
+              : linhas
+                ? `+ Adicionar mais prints (até ${porEnvio} por vez)`
+                : `Escolher prints (até ${porEnvio} por vez)`}
+          <input
+            type="file"
+            accept="image/*"
+            multiple={porEnvio > 1}
+            className="hidden"
+            onChange={(e) => {
+              void enviar(e.target.files);
+              e.target.value = '';
+            }}
+          />
+        </label>
+      )}
       <p className="-mt-1 text-xs text-muted">
         Os prints são lidos por inteligência artificial só para extrair data, valor, km e tempo de cada corrida. Nomes e endereços não são guardados nem devolvidos.
-        {!plan.pro && (
+        {!plan.pro && !esgotado && (
           <>
             {' '}
-            No plano Grátis são 3 envios a cada 30 dias.{' '}
+            No plano Grátis é <strong>1 print a cada 30 dias</strong>: escolha o print com mais corridas.{' '}
             <button className="font-semibold text-accent" onClick={upgrade}>
-              <ProTag /> libera 40 por dia
+              <ProTag /> libera até 5 por vez, 40 vezes por dia
             </button>
           </>
         )}
-        {restantes !== null && ` Envios restantes: ${restantes}.`}
+        {plan.pro && restantes !== null && ` Envios restantes hoje: ${restantes}.`}
       </p>
 
       {erro && (

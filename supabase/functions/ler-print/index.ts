@@ -5,14 +5,15 @@
 // Segredo necessário: ANTHROPIC_API_KEY.
 //
 // Privacidade: as imagens não são guardadas; a IA é instruída a não devolver nomes nem endereços.
-// Custo: limite por usuário (Grátis: 3 envios a cada 30 dias; Pro: 40 por dia), cada envio com até 5 prints.
+// Plano: Pro = 40 envios por dia, até 5 prints cada. Grátis = 1 print a cada 30 dias (um gostinho do Pro).
 import Anthropic from 'npm:@anthropic-ai/sdk@1.1.0';
 import { zodOutputFormat } from 'npm:@anthropic-ai/sdk@1.1.0/helpers/zod';
 import { z } from 'npm:zod@4.6.7';
 import { admin, audit, cors, countRecent, json, userFrom } from '../_shared/util.ts';
 
-const TIPOS = ['image/png', 'image/jpeg', 'image/webp'] as const;
 const MAX_IMAGENS = 5;
+
+const TIPOS = ['image/png', 'image/jpeg', 'image/webp'] as const;
 const MAX_BASE64 = 6_000_000; // ~4,5 MB por imagem depois de decodificada (o limite da API é 5 MB)
 
 const Corrida = z.object({
@@ -44,10 +45,42 @@ Regras:
 const DISPONIVEL = !!Deno.env.get('ANTHROPIC_API_KEY');
 const anthropic = DISPONIVEL ? new Anthropic() : null; // lê ANTHROPIC_API_KEY do ambiente
 
+const LIMITES = {
+  pro: { envios: 40, janelaMin: 24 * 60, prints: MAX_IMAGENS },
+  gratis: { envios: 1, janelaMin: 30 * 24 * 60, prints: 1 },
+};
+
+/** Quanto a pessoa ainda pode usar agora e, se acabou, quando libera de novo. */
+async function cota(db: ReturnType<typeof admin>, uid: string) {
+  const { data: pro } = await db.rpc('is_pro_de', { uid });
+  const l = pro ? LIMITES.pro : LIMITES.gratis;
+  const usados = await countRecent(db, uid, 'ler_print', l.janelaMin);
+  let liberaEm: string | null = null;
+  if (usados >= l.envios) {
+    // o envio mais antigo dentro da janela é o próximo a "vencer"
+    const desde = new Date(Date.now() - l.janelaMin * 60_000).toISOString();
+    const { data } = await db
+      .from('auditoria')
+      .select('criado_em')
+      .eq('user_id', uid)
+      .eq('acao', 'ler_print')
+      .gte('criado_em', desde)
+      .order('criado_em', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (data?.criado_em) liberaEm = new Date(new Date(data.criado_em).getTime() + l.janelaMin * 60_000).toISOString();
+  }
+  return { pro: !!pro, usados, limite: l.envios, restantes: Math.max(0, l.envios - usados), printsPorEnvio: l.prints, liberaEm };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors(req) });
-  // GET: o app pergunta se a leitura de prints já está ligada
-  if (req.method === 'GET') return json(req, { disponivel: DISPONIVEL });
+  // GET: o app pergunta se a leitura está ligada e, para quem está logado, quanto ainda pode usar
+  if (req.method === 'GET') {
+    const u = await userFrom(req);
+    if (!u || !DISPONIVEL) return json(req, { disponivel: DISPONIVEL });
+    return json(req, { disponivel: true, ...(await cota(admin(), u.id)) });
+  }
   if (req.method !== 'POST') return json(req, { error: 'Método não permitido' }, 405);
   if (!anthropic) return json(req, { error: 'A leitura de prints ainda não está disponível. Use a planilha por enquanto.' }, 503);
 
@@ -72,16 +105,24 @@ Deno.serve(async (req) => {
 
   const db = admin();
   // Limite de uso: protege o custo da IA e evita abuso
-  const { data: pro } = await db.rpc('is_pro_de', { uid: user.id });
-  const usados = pro ? await countRecent(db, user.id, 'ler_print', 24 * 60) : await countRecent(db, user.id, 'ler_print', 30 * 24 * 60);
-  const limite = pro ? 40 : 3;
-  if (usados >= limite) {
+  const c = await cota(db, user.id);
+  if (!c.pro && imagens.length > LIMITES.gratis.prints) {
+    return json(req, { error: 'No plano Grátis dá para enviar 1 print a cada 30 dias. Assine o Pro para enviar até 5 por vez.' }, 403);
+  }
+  if (c.restantes <= 0) {
+    const quando = c.liberaEm ? new Date(c.liberaEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : null;
     return json(
       req,
-      { error: pro ? 'Você chegou ao limite de 40 envios de prints hoje. Tente amanhã.' : 'No plano Grátis são 3 envios de prints a cada 30 dias. Assine o Pro para importar mais.' },
+      {
+        error: c.pro
+          ? 'Você chegou ao limite de 40 envios de prints hoje. Tente amanhã.'
+          : `Você já usou o print grátis destes 30 dias${quando ? `; o próximo libera em ${quando}` : ''}. Assine o Pro para importar quantos prints quiser (até 40 envios por dia).`,
+      },
       429,
     );
   }
+  const usados = c.usados;
+  const limite = c.limite;
   await audit(db, user.id, 'ler_print', { imagens: imagens.length, plataforma });
 
   const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());

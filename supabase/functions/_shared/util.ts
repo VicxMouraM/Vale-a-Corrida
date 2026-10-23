@@ -5,12 +5,18 @@ export const PRECO_PRO = 49.99;
 export const TOLERANCIA_DIAS = 3;
 
 /* ---------- CORS: só o endereço do app pode chamar ---------- */
-const ORIGENS = (Deno.env.get('APP_ORIGINS') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+// Endereço de site não diferencia maiúsculas: o navegador sempre manda em minúsculas
+// (https://vicxmouram.github.io), mesmo que o segredo tenha sido escrito como VicxMouraM.
+// Barra no fim também é ignorada.
+const ORIGENS = (Deno.env.get('APP_ORIGINS') ?? '')
+  .split(',')
+  .map((s) => s.trim().toLowerCase().replace(/\/+$/, ''))
+  .filter(Boolean);
 
 export function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
   // localhost só quando ALLOW_LOCALHOST=1 (desenvolvimento); em produção, só os endereços do app
-  const ok = ORIGENS.includes(origin) || (Deno.env.get('ALLOW_LOCALHOST') === '1' && /^http:\/\/localhost:\d+$/.test(origin));
+  const ok = ORIGENS.includes(origin.toLowerCase()) || (Deno.env.get('ALLOW_LOCALHOST') === '1' && /^http:\/\/localhost:\d+$/.test(origin));
   return {
     'Access-Control-Allow-Origin': ok ? origin : (ORIGENS[0] ?? 'null'),
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

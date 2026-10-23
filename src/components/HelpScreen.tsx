@@ -98,7 +98,7 @@ export function HelpScreen({ tela, plataforma, veiculo, onBack }: { tela: string
         >
           <span>
             <span className="block font-display text-lg font-bold tracking-wide">💬 Falar no WhatsApp</span>
-            <span className="block text-xs opacity-90">{WHATSAPP_EXIBIR} · a mensagem já vai com os dados do seu celular</span>
+            <span className="block text-xs opacity-90">{WHATSAPP_EXIBIR} · A mensagem já vai com os dados do seu celular</span>
           </span>
           <span aria-hidden className="text-2xl">›</span>
         </a>

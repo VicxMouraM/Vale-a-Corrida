@@ -358,6 +358,7 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
             )}
             {accountLabel && (
               <button
+                data-tour="conta"
                 onClick={onAccount}
                 aria-label={accountLabel}
                 className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold hover:bg-sunk sm:px-3"

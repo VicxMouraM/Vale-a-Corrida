@@ -76,7 +76,7 @@ export function Calculator({ offer, setOffer, settings: s, setSettings, onRegist
           </div>
           <div className="flex flex-col gap-3">
             <NumField id="of-valor" big label={L.valor} prefix="R$" value={offer.valor} onChange={set('valor')} />
-            <div className="grid grid-cols-3 gap-2">
+            <div data-tour="distancias" className="grid grid-cols-3 gap-2">
               <NumField id="of-km1" label={L.km1} suffix="km" value={offer.kmAteColeta} onChange={set('kmAteColeta')} />
               <NumField id="of-km2" label={L.km2} suffix="km" value={offer.kmEntrega} onChange={set('kmEntrega')} />
               <NumField id="of-km3" label={L.km3} suffix="km" value={offer.kmRetorno} onChange={set('kmRetorno')} />

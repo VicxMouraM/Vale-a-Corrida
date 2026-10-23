@@ -418,7 +418,7 @@ function indiceHtml(): string {
     conteudo: `<div class="card lista">
 <h1>Guias para motoristas e entregadores</h1>
 <p class="meta">Contas simples, explicadas passo a passo, para você saber quanto ganha de verdade.</p>
-<div class="dica"><strong>Por onde começar?</strong> Leia primeiro <a href="../custo-por-km/">quanto custa cada km rodado</a>. Com esse número em mãos, os outros guias ficam bem mais fáceis.</div>
+<div class="dica"><strong>Por onde começar?</strong> Leia primeiro <a href="../custo-por-km/">Quanto custa cada km rodado</a>• Com esse número em mãos, os outros guias ficam bem mais fáceis.</div>
 ${itens}
 </div>`,
   });

@@ -106,7 +106,7 @@ select criado_em, tipo, mensagem, contato, contexto
   from public.feedback where not resolvido order by criado_em desc;
 ```
 
-**Aviso por e-mail:** cada mensagem nova do formulário chega também por e-mail (via Brevo), com o texto, o contato e as informações técnicas; "Responder" vai direto para a pessoa quando ela deixou um e-mail. Configuração (segredos no Supabase): `BREVO_API_KEY` (chave de **API** da Brevo, não a de SMTP), `FEEDBACK_EMAIL_PARA` (hoje `vicxmoura@gmail.com`) e, opcional, `FEEDBACK_EMAIL_DE` (padrão `nao-responda@valeacorrida.app.br`, precisa ser um remetente válido na Brevo). Sem a chave, o aviso fica desligado e as mensagens continuam salvas.
+**Aviso por e-mail:** cada mensagem nova do formulário chega também por e-mail (via Brevo), com o texto, o contato e as informações técnicas; "Responder" vai direto para a pessoa quando ela deixou um e-mail. Configuração (segredos no Supabase): `BREVO_API_KEY` (chave de **API** da Brevo, não a de SMTP), `FEEDBACK_EMAIL_PARA` (hoje `vicxmoura@gmail.com`) e, opcional, `FEEDBACK_EMAIL_DE` (padrão `nao-responda@valeacorrida.app.br`, precisa ser um remetente válido na Brevo). Sem a chave, o aviso fica desligado e as mensagens continuam salvas. A chave da Brevo (acesso restrito: só e-mails transacionais) **expira depois de 90 dias seguidos sem uso**: se os avisos pararem, gere outra em Brevo → SMTP & API → Chaves API e grave de novo com `npx supabase secrets set BREVO_API_KEY='...'`.
 
 Proteções: o envio passa pelo servidor (função `feedback`), no máximo 5 mensagens por hora por origem e 10 por dia por conta, até 2.000 caracteres; o endereço de internet é guardado só como código irreversível.
 

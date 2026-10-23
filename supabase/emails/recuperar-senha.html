@@ -4,7 +4,7 @@
   <h2 style="margin: 0 0 8px;">Vale a <span style="color: #145c8a;">Corrida?</span></h2>
   <p>Recebemos um pedido para criar uma nova senha para a sua conta.</p>
   <p>
-    <a href="{{ .ConfirmationURL }}" style="display: inline-block; background: #145c8a; color: #ffffff; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+    <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery" style="display: inline-block; background: #145c8a; color: #ffffff; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold;">
       Criar nova senha
     </a>
   </p>

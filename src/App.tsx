@@ -156,6 +156,17 @@ function Main({ uid }: { uid: string | null }) {
       }
       banner={
         <>
+        {auth.notice && (
+          <div
+            role="status"
+            className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-sm ${auth.notice.ok ? 'border-good/40 bg-good-soft' : 'border-warn/40 bg-warn-soft'}`}
+          >
+            <p>{auth.notice.text}</p>
+            <button className="font-semibold text-muted hover:text-ink" onClick={auth.clearNotice}>
+              Fechar
+            </button>
+          </div>
+        )}
         {pagamento && (
           <div
             role="status"

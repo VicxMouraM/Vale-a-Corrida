@@ -22,7 +22,7 @@ self.addEventListener('fetch', (e) => {
   const sameOrigin = url.origin === self.location.origin;
   if (!sameOrigin && !FONT_HOSTS.includes(url.hostname)) return;
   // Volta do login (Google/Apple/e-mail) traz um código na URL: sempre da rede
-  if (req.mode === 'navigate' && url.searchParams.has('code')) return;
+  if (req.mode === 'navigate' && (url.searchParams.has('code') || url.searchParams.has('token_hash'))) return;
   // Só a página do app vai para o cache como index.html; /termos/, /privacidade/ etc. seguem direto da rede
   const raiz = new URL('./', self.location).pathname;
   if (req.mode === 'navigate' && url.pathname !== raiz && url.pathname !== raiz + 'index.html') return;

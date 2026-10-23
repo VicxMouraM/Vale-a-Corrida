@@ -62,7 +62,11 @@ export function AuthScreen({ onClose, onLegal }: { onClose: () => void; onLegal:
     if (!aceite) return setError('Para criar a conta, aceite os Termos de uso e a Política de privacidade.');
     return run(async () => {
       const r = await auth.signUp(email, password, nome, token);
-      if (r === 'confirm-email') setInfo(`Enviamos um link de confirmação para ${email.trim()}. Abra o e-mail neste aparelho para ativar a conta.`);
+      if (r === 'exists') {
+        setError('Já existe uma conta com esse e-mail. Toque em Entrar (com a senha ou com o Google) ou use “Esqueci a senha”.');
+        return;
+      }
+      if (r === 'confirm-email') setInfo(`Enviamos um link de confirmação para ${email.trim()}. Abra o e-mail e toque no link para ativar a conta. Confira também o spam.`);
     });
   }
 

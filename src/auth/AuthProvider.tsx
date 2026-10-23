@@ -1,4 +1,4 @@
-import type { Session, User } from '@supabase/supabase-js';
+import type { EmailOtpType, Session, User } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { LEGAL } from '../legal';
 import { redirectUrl, supabase } from '../lib/supabase';
@@ -12,8 +12,11 @@ interface AuthState {
   user: User | null;
   /** true depois de abrir o link de "esqueci a senha": o app pede a nova senha. */
   recovering: boolean;
+  /** resultado de um link de e-mail aberto agora (confirmação de cadastro) */
+  notice: { ok: boolean; text: string } | null;
+  clearNotice: () => void;
   signInPassword: (email: string, password: string, captchaToken?: string) => Promise<void>;
-  signUp: (email: string, password: string, nome: string, captchaToken?: string) => Promise<'confirm-email' | 'signed-in'>;
+  signUp: (email: string, password: string, nome: string, captchaToken?: string) => Promise<'confirm-email' | 'signed-in' | 'exists'>;
   signInGoogle: () => Promise<void>;
   sendPasswordReset: (email: string, captchaToken?: string) => Promise<void>;
   resendConfirmation: (email: string, captchaToken?: string) => Promise<void>;
@@ -48,14 +51,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(!!supabase);
   const [recovering, setRecovering] = useState(false);
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
-    const { data } = supabase.auth.onAuthStateChange((event, s) => {
+    const sb = supabase;
+    if (!sb) return;
+    // Link do e-mail (confirmação de cadastro ou troca de senha): ?token_hash=…&type=…
+    // Funciona em qualquer navegador, inclusive se o e-mail for aberto fora de onde a conta foi criada.
+    const link = readEmailLink();
+    const pronto = link
+      ? sb.auth.verifyOtp({ token_hash: link.tokenHash, type: link.type }).then(({ error }) => {
+          if (error) {
+            setNotice({
+              ok: false,
+              text:
+                link.type === 'recovery'
+                  ? 'Este link para criar uma nova senha expirou ou já foi usado. Peça outro em Entrar → Esqueci a senha.'
+                  : 'Este link de confirmação expirou ou já foi usado. Se você já confirmou, é só entrar com seu e-mail e senha.',
+            });
+          } else if (link.type === 'recovery') setRecovering(true);
+          else setNotice({ ok: true, text: 'E-mail confirmado! Sua conta está pronta.' });
+        })
+      : Promise.resolve();
+    void pronto.then(() =>
+      sb.auth.getSession().then(({ data }) => {
+        setSession(data.session);
+        setLoading(false);
+      }),
+    );
+    const { data } = sb.auth.onAuthStateChange((event, s) => {
       setSession(s);
       if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       if (event === 'SIGNED_IN' && s) recordGoogleConsent(s.user.id);
@@ -68,6 +92,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     user: session?.user ?? null,
     recovering,
+    notice,
+    clearNotice: () => setNotice(null),
     async signInPassword(email, password, captchaToken) {
       const { error } = await need().auth.signInWithPassword({ email: email.trim(), password, options: { captchaToken } });
       if (error) throw error;
@@ -80,7 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         options: { emailRedirectTo: redirectUrl(), captchaToken, data: { nome: nome.trim(), termos_versao: LEGAL.versao } },
       });
       if (error) throw error;
-      return data.session ? 'signed-in' : 'confirm-email';
+      if (data.session) return 'signed-in';
+      // O Supabase não dá erro para e-mail já cadastrado (para não revelar quem tem conta): devolve um
+      // usuário sem identidades. Aqui preferimos avisar, para a pessoa não ficar esperando um e-mail que não vem.
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return 'exists';
+      return 'confirm-email';
     },
     async signInGoogle() {
       // O aviso de aceite aparece antes do botão; o aceite é gravado quando a pessoa volta logada
@@ -159,4 +189,22 @@ function recordGoogleConsent(uid: string) {
   setTimeout(() => {
     void sb.from('profiles').update({ aceitou_termos_em: new Date().toISOString(), termos_versao: versao }).eq('id', uid).is('aceitou_termos_em', null);
   }, 0);
+}
+
+const TIPOS_LINK: EmailOtpType[] = ['signup', 'email', 'recovery', 'invite', 'magiclink', 'email_change'];
+
+/** Lê e tira do endereço o código do link de e-mail, para não ficar no histórico nem ser reaproveitado. */
+function readEmailLink(): { tokenHash: string; type: EmailOtpType } | null {
+  try {
+    const u = new URL(location.href);
+    const tokenHash = u.searchParams.get('token_hash');
+    const type = u.searchParams.get('type') as EmailOtpType | null;
+    if (!tokenHash || !type) return null;
+    u.searchParams.delete('token_hash');
+    u.searchParams.delete('type');
+    window.history.replaceState(null, '', u.pathname + u.search + u.hash);
+    return TIPOS_LINK.includes(type) && /^[A-Za-z0-9_-]{10,200}$/.test(tokenHash) ? { tokenHash, type } : null;
+  } catch {
+    return null;
+  }
 }

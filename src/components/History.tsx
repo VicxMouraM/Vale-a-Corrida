@@ -10,6 +10,7 @@ import { activateVehicle, garage } from '../lib/vehicles';
 import { BarChart, StackBar } from './charts';
 import { ProGate, ProTag } from './Pro';
 import { AdSlot } from './AdSlot';
+import { ImportPanel } from './ImportPanel';
 import { Btn, Card, NumField, SectionTitle, Segmented, TextField } from './ui';
 
 export interface Draft {
@@ -25,6 +26,8 @@ interface Props {
   setDraft: (d: Draft | null) => void;
   /** corridas guardadas que o plano grátis não mostra */
   hiddenCount?: number;
+  /** ids de TODAS as corridas (inclusive as escondidas), para a importação não duplicar */
+  allIds?: Set<string>;
 }
 
 export function newDraft(s: Settings): Draft {
@@ -44,7 +47,8 @@ export function newDraft(s: Settings): Draft {
   };
 }
 
-export function History({ s, history, setHistory, draft, setDraft, hiddenCount = 0 }: Props) {
+export function History({ s, history, setHistory, draft, setDraft, hiddenCount = 0, allIds }: Props) {
+  const [importando, setImportando] = useState(false);
   const { plan, upgrade } = usePlan();
   const [kind, setKind] = useState<PeriodKind>('semana');
   const [ref, setRef] = useState(() => new Date());
@@ -114,6 +118,17 @@ export function History({ s, history, setHistory, draft, setDraft, hiddenCount =
   return (
     <div className="flex flex-col gap-5">
       {draft && <EntryForm s={s} draft={draft} setDraft={setDraft} onSave={saveDraft} />}
+      {importando && (
+        <ImportPanel
+          s={s}
+          existentes={allIds ?? new Set(history.map((e) => e.id))}
+          onImport={(novas) => {
+            setHistory([...history, ...novas]);
+            setMsg(`${novas.length} corridas importadas.`);
+          }}
+          onClose={() => setImportando(false)}
+        />
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -148,6 +163,7 @@ export function History({ s, history, setHistory, draft, setDraft, hiddenCount =
               + Registrar corrida
             </Btn>
           )}
+          <Btn onClick={() => setImportando(true)}>Importar</Btn>
           <Btn onClick={exportCsv} disabled={plan.pro && history.length === 0}>
             <span className="inline-flex items-center gap-1.5">
               Exportar CSV {!plan.pro && <ProTag />}

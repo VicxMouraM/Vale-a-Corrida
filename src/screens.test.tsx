@@ -4,6 +4,9 @@ import App from './App';
 import { AuthProvider } from './auth/AuthProvider';
 import { Calculator } from './components/Calculator';
 import { Goals } from './components/Goals';
+import { ImportPanel, lerArquivo, melhorArquivo } from './components/ImportPanel';
+import { QuickOffer } from './components/QuickOffer';
+import { strToU8, zipSync } from 'fflate';
 import { History } from './components/History';
 import { LegalScreen } from './components/LegalScreen';
 import { Onboarding } from './components/Onboarding';
@@ -100,6 +103,31 @@ describe('telas', () => {
 
   it('pro tem "sem anúncios" entre os benefícios', () => {
     expect(withPlan(FREE_PLAN, <PlanScreen plan={FREE_PLAN} loggedIn onLogin={noop} onBack={noop} refresh={async () => undefined} />)).toContain('Sem anúncios');
+  });
+
+  it('oferta rápida abre com teclado e 3 campos', () => {
+    const html = withPlan(PRO, <QuickOffer settings={configured()} combustivel="auto" onClose={noop} onRegister={noop} onUseFull={noop} />);
+    expect(html).toContain('Oferta rápida');
+    expect(html).toContain('Km total');
+    expect(html).toContain('Aceitei');
+  });
+
+  it('importar: tela inicial com plataformas e instruções', () => {
+    const html = withPlan(FREE_PLAN, <ImportPanel s={configured()} existentes={new Set()} onImport={noop} onClose={noop} />);
+    expect(html).toContain('Importar corridas');
+    expect(html).toContain('Lalamove');
+  });
+
+  it('importar .zip: escolhe a planilha de corridas e ignora o resto', async () => {
+    const corridas = ['Data;Valor;Distancia (km);Duracao', '20/10/2026 10:00;R$ 20,00;8;20 min'].join('\n');
+    const zip = zipSync({
+      'dados/perfil.csv': strToU8(['nome;email', 'fulano;f@x.com'].join('\n')),
+      'dados/viagens.csv': strToU8(corridas),
+      'dados/foto.jpg': new Uint8Array([1, 2, 3]),
+    });
+    const lista = await lerArquivo(new File([zip], 'dados.zip'));
+    expect(lista.map((a) => a.nome).sort()).toEqual(['perfil.csv', 'viagens.csv']);
+    expect(lista[melhorArquivo(lista)].nome).toBe('viagens.csv');
   });
 
   it('termos e privacidade', () => {

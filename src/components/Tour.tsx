@@ -11,6 +11,7 @@ export interface TourStep {
 export const TUTORIAL: TourStep[] = [
   { titulo: 'Tudo pronto! 👋', texto: 'Em 1 minuto você aprende a usar o app. Dá para pular e rever depois em Ajustes.' },
   { target: 'workbar', titulo: 'Veículo e plataforma', texto: 'Os cálculos usam os custos deste veículo e a taxa desta plataforma. Toque para trocar ou ajustar.' },
+  { target: 'rapida', titulo: '⚡ Oferta rápida', texto: 'Chegou uma oferta? Toque aqui: teclado grande, só valor, km e tempo, e o semáforo aparece enquanto você digita.' },
   { target: '#of-valor', titulo: '1. Valor da oferta', texto: 'Quando chegar uma oferta, digite aqui quanto ela paga.' },
   { target: '#of-km1', titulo: '2. Distâncias', texto: 'Km até buscar, até o destino e a volta. O retorno vazio também gasta combustível.' },
   { target: '#of-min', titulo: '3. Tempo', texto: 'Do aceite até ficar livre de novo, com a espera. É o que define o seu ganho por hora.' },

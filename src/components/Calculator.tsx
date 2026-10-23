@@ -18,9 +18,10 @@ interface Props {
   onRegister: (a: Analysis) => void;
   onOpenSettings: (secao?: string) => void;
   today: { qtd: number; lucro: number };
+  onQuick?: () => void;
 }
 
-export function Calculator({ offer, setOffer, settings: s, setSettings, onRegister, onOpenSettings, today }: Props) {
+export function Calculator({ offer, setOffer, settings: s, setSettings, onRegister, onOpenSettings, today, onQuick }: Props) {
   const L = offerLabels(activePlatform(s));
   const errors = useMemo(() => validateOffer(offer, s), [offer, s]);
   const a = useMemo(() => (errors.length ? null : analyze(offer, s)), [offer, s, errors]);
@@ -48,6 +49,19 @@ export function Calculator({ offer, setOffer, settings: s, setSettings, onRegist
       <div className="flex flex-col gap-3 lg:sticky lg:top-[76px]">
         <TodayStrip today={today} metaDia={s.metas.dia} />
         <WorkBar s={s} setSettings={setSettings} onOpenSettings={onOpenSettings} />
+        {onQuick && (
+          <button
+            data-tour="rapida"
+            onClick={onQuick}
+            className="flex items-center justify-between gap-3 rounded-xl bg-accent px-4 py-3 text-left text-accent-ink shadow-sm hover:opacity-95"
+          >
+            <span>
+              <span className="block font-display text-xl font-bold tracking-wide">⚡ Oferta rápida</span>
+              <span className="block text-xs opacity-90">Teclado grande, 3 campos, resultado enquanto digita</span>
+            </span>
+            <span aria-hidden className="text-2xl">›</span>
+          </button>
+        )}
         <Card>
           <div className="mb-3 flex items-baseline justify-between gap-2">
             <h2 className="font-display text-xl font-semibold tracking-wide">Nova oferta</h2>

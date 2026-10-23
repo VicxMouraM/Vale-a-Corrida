@@ -8,6 +8,7 @@ import { LegalLinks, LegalScreen, type LegalDoc } from './components/LegalScreen
 import { Onboarding } from './components/Onboarding';
 import { Tour, TUTORIAL } from './components/Tour';
 import { PlanScreen } from './components/PlanScreen';
+import { QuickOffer } from './components/QuickOffer';
 import { History, type Draft } from './components/History';
 import { SettingsPanel } from './components/SettingsPanel';
 import { summarize, type Analysis } from './lib/calc';
@@ -235,6 +236,7 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
     return (TABS.some((t) => t.id === h) ? h : 'corrida') as Tab;
   });
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [rapida, setRapida] = useState(false);
 
   useEffect(() => {
     try {
@@ -249,6 +251,7 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
   const setVisible = (v: HistoryEntry[]) => setHistory(hidden.length ? [...hidden, ...v] : v);
 
   const hist = useMemo(() => summarize(visible), [visible]);
+  const allIds = useMemo(() => new Set(history.map((e) => e.id)), [history]);
   const today = useMemo(() => {
     const k = dayKey(new Date());
     const t = summarize(visible.filter((e) => dayKey(new Date(e.data)) === k));
@@ -267,14 +270,15 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
     window.scrollTo({ top: 0 });
   }
 
-  function registerFromAnalysis(a: Analysis) {
+  function registerFromAnalysis(a: Analysis, o: Offer = offer) {
+    setRapida(false);
     setDraft({
       input: {
         data: new Date().toISOString(),
-        valor: offer.valor,
-        bonus: offer.bonus,
+        valor: o.valor,
+        bonus: o.bonus,
         km: Math.round(a.km * 10) / 10,
-        minutos: offer.minutos,
+        minutos: o.minutos,
         despesas: a.despesas,
         taxas: Math.round(a.taxas * 100) / 100,
         combustivel: a.combustivel,
@@ -354,9 +358,22 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
         ) : (
           <>
         {tab === 'corrida' && !settings.tutorialVisto && !overlay && <Tour steps={TUTORIAL} onClose={() => setSettings({ ...settings, tutorialVisto: true })} />}
-        {tab === 'corrida' && <Calculator offer={offer} setOffer={setOffer} settings={settings} setSettings={setSettings} onRegister={registerFromAnalysis} onOpenSettings={openSettings} today={today} />}
+        {tab === 'corrida' && <Calculator offer={offer} setOffer={setOffer} settings={settings} setSettings={setSettings} onRegister={(a) => registerFromAnalysis(a)} onOpenSettings={openSettings} today={today} onQuick={() => setRapida(true)} />}
+        {rapida && (
+          <QuickOffer
+            settings={settings}
+            combustivel={offer.combustivel}
+            onClose={() => setRapida(false)}
+            onRegister={(a, o) => registerFromAnalysis(a, o)}
+            onUseFull={(o) => {
+              setOffer({ ...offer, valor: o.valor, kmAteColeta: 0, kmEntrega: o.kmEntrega, kmRetorno: 0, minutos: o.minutos });
+              setRapida(false);
+              goTab('corrida');
+            }}
+          />
+        )}
         {tab === 'metas' && <Goals s={settings} setSettings={setSettings} hist={hist} />}
-        {tab === 'historico' && <History s={settings} history={visible} setHistory={setVisible} draft={draft} setDraft={setDraft} hiddenCount={hidden.length} />}
+        {tab === 'historico' && <History s={settings} history={visible} setHistory={setVisible} draft={draft} setDraft={setDraft} hiddenCount={hidden.length} allIds={allIds} />}
         {tab === 'ajustes' && <SettingsPanel s={settings} setSettings={setSettings} history={history} setHistory={setHistory} cloud={accountLabel === 'Conta'} onTutorial={() => {
           setSettings({ ...settings, tutorialVisto: false });
           goTab('corrida');

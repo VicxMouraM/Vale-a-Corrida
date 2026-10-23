@@ -113,8 +113,8 @@ async function callFn(name: string, body: Record<string, unknown>): Promise<Chec
   return data;
 }
 
-export function startCheckout(cpfCnpj: string, billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO') {
-  return callFn('assinar', { cpfCnpj, billingType });
+export function startCheckout(nome: string, cpfCnpj: string, billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO') {
+  return callFn('assinar', { nome, cpfCnpj, billingType });
 }
 
 export function cancelSubscription(motivo: string) {

@@ -35,10 +35,15 @@ interface Props {
   onLogin: () => void;
   onBack: () => void;
   refresh: () => Promise<void>;
+  /** nome da conta, para já vir preenchido */
+  nomeConta?: string;
 }
 
-export function PlanScreen({ plan, loggedIn, onLogin, onBack, refresh }: Props) {
+export function PlanScreen({ plan, loggedIn, onLogin, onBack, refresh, nomeConta }: Props) {
   const [cpf, setCpf] = useState('');
+  // Só preenche se parecer nome de verdade (contas sem nome trazem o e-mail)
+  const [nome, setNome] = useState(() => (nomeConta && !nomeConta.includes('@') ? nomeConta : ''));
+  const nomeOk = /^[\p{L}\p{N}][\p{L}\p{N} .,'&/-]*\s+[\p{L}\p{N}]/u.test(nome.trim());
   const [billing, setBilling] = useState<Billing>(plan.billingType ?? 'PIX');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,10 +58,11 @@ export function PlanScreen({ plan, loggedIn, onLogin, onBack, refresh }: Props) 
 
   async function assinar(e: FormEvent) {
     e.preventDefault();
+    if (!nomeOk) return setError('Informe o nome completo (nome e sobrenome), igual ao do CPF ou CNPJ.');
     if (!cpfCnpjValido(cpf)) return setError('Confira o CPF (ou CNPJ). Ele é exigido para emitir a cobrança.');
     setBusy(true);
     setError(null);
-    const r = await startCheckout(cpf, billing);
+    const r = await startCheckout(nome.trim(), cpf, billing);
     setBusy(false);
     if (r.error || !r.invoiceUrl) return setError(r.error ?? 'Não foi possível gerar a cobrança.');
     setWaiting(true);
@@ -158,6 +164,7 @@ export function PlanScreen({ plan, loggedIn, onLogin, onBack, refresh }: Props) 
                     : 'Todo mês chega um boleto. Libera em até 3 dias úteis após o pagamento.'}
               </span>
             </div>
+            <TextField label="Nome completo (ou razão social)" value={nome} onChange={setNome} autoComplete="name" placeholder="Como está no CPF ou CNPJ" maxLength={100} />
             <TextField label="CPF ou CNPJ (exigido para a cobrança)" value={cpf} onChange={(v) => setCpf(maskCpfCnpj(v))} inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" maxLength={18} />
             <p className="-mt-1 text-xs text-muted">O CPF vai só para o Asaas, que emite a cobrança. Não guardamos no app.</p>
             {error && (
@@ -165,7 +172,7 @@ export function PlanScreen({ plan, loggedIn, onLogin, onBack, refresh }: Props) 
                 {error}
               </p>
             )}
-            <Btn type="submit" kind="primary" disabled={busy || cpf.replace(/\D/g, '').length < 11} className="py-2.5">
+            <Btn type="submit" kind="primary" disabled={busy || !nomeOk || cpf.replace(/\D/g, '').length < 11} className="py-2.5">
               {busy ? 'Gerando cobrança…' : `Assinar por ${brl(PRECO_PRO)}/mês`}
             </Btn>
           </form>

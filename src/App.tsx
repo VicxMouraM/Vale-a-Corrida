@@ -112,7 +112,14 @@ function Main({ uid }: { uid: string | null }) {
         ) : screen === 'legal' ? (
           <LegalScreen doc={legal.doc} onDoc={(doc) => setLegal({ ...legal, doc })} onBack={() => setScreen(legal.from)} />
         ) : screen === 'plano' ? (
-          <PlanScreen plan={plan} loggedIn={!!uid} onLogin={() => setScreen('login')} onBack={() => setScreen('app')} refresh={planLoader.refresh} />
+          <PlanScreen
+            plan={plan}
+            loggedIn={!!uid}
+            onLogin={() => setScreen('login')}
+            onBack={() => setScreen('app')}
+            refresh={planLoader.refresh}
+            nomeConta={(auth.user?.user_metadata?.nome || auth.user?.user_metadata?.full_name || auth.user?.user_metadata?.name) as string | undefined}
+          />
         ) : null
       }
       banner={

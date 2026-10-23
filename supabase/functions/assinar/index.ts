@@ -1,5 +1,5 @@
 // Cria (ou reaproveita) a assinatura Pro no Asaas e devolve o link de pagamento da cobrança em aberto.
-// Chamada pelo app com o usuário logado. Corpo: { cpfCnpj: string, billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' }
+// Chamada pelo app com o usuário logado. Corpo: { nome: string, cpfCnpj: string, billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' }
 //
 // Antifraude:
 // - conta bloqueada (chargeback, fraude) ou CPF/e-mail em lista de bloqueio → recusa
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
   if (!user) return json(req, { error: 'Entre na sua conta para assinar.' }, 401);
   if (user.email && !user.email_confirmed_at) return json(req, { error: 'Confirme o seu e-mail antes de assinar.' }, 403);
 
-  let body: { cpfCnpj?: string; billingType?: string };
+  let body: { nome?: string; cpfCnpj?: string; billingType?: string };
   try {
     body = await req.json();
   } catch {
@@ -52,6 +52,11 @@ Deno.serve(async (req) => {
   const billingType = body.billingType as Billing;
   if (!cpfCnpjValido(cpfCnpj)) return json(req, { error: 'CPF ou CNPJ inválido.' }, 400);
   if (!TIPOS.includes(billingType)) return json(req, { error: 'Forma de pagamento inválida.' }, 400);
+  // Nome do comprador (aparece na cobrança e no recibo). Nome de pessoa ou razão social (MEI tem números).
+  const nome = String(body.nome ?? '').replace(/\s+/g, ' ').trim();
+  if (nome.length < 3 || nome.length > 100 || !/^[\p{L}\p{N}][\p{L}\p{N} .,'&/\-]*$/u.test(nome) || !nome.includes(' ')) {
+    return json(req, { error: 'Informe o nome completo (nome e sobrenome), igual ao do CPF ou CNPJ.' }, 400);
+  }
 
   const db = admin();
   const { data: sub, error } = await db.from('subscriptions').select('*').eq('user_id', user.id).maybeSingle();
@@ -83,9 +88,8 @@ Deno.serve(async (req) => {
     // Cliente no Asaas (CPF fica só no Asaas; aqui guardamos só o hash com segredo, para bloqueios)
     let customerId: string | null = sub?.asaas_customer_id ?? null;
     if (!customerId) {
-      const nome = (user.user_metadata?.nome || user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'Cliente') as string;
       const c = await asaas<{ id: string }>('POST', '/customers', {
-        name: nome.slice(0, 100),
+        name: nome,
         email: user.email,
         cpfCnpj,
         externalReference: user.id,
@@ -93,7 +97,7 @@ Deno.serve(async (req) => {
       });
       customerId = c.id;
     } else {
-      await asaas('PUT', `/customers/${customerId}`, { cpfCnpj });
+      await asaas('PUT', `/customers/${customerId}`, { name: nome, cpfCnpj });
     }
 
     // Assinatura em aberto com a mesma forma de pagamento: devolve o link que já existe

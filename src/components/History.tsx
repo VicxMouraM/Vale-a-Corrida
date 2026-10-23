@@ -5,6 +5,8 @@ import { brl, hm, num } from '../lib/format';
 import { dayKey, periodLabel, periodRange, shiftRef, toLocalInput, type PeriodKind } from '../lib/period';
 import type { Fuel, HistoryEntry, Settings } from '../types';
 import { DIAS_HISTORICO_GRATIS, usePlan } from '../lib/plan';
+import { platformName, platforms } from '../lib/platforms';
+import { activateVehicle, garage } from '../lib/vehicles';
 import { BarChart, StackBar } from './charts';
 import { ProGate, ProTag } from './Pro';
 import { Btn, Card, NumField, SectionTitle, Segmented, TextField } from './ui';
@@ -35,6 +37,8 @@ export function newDraft(s: Settings): Draft {
       despesas: 0,
       taxas: 0,
       combustivel: s.veiculo.combustivelPadrao === 'etanol' ? 'etanol' : 'gasolina',
+      veiculo: s.veiculoAtivo ?? undefined,
+      plataforma: s.plataformaAtiva ?? undefined,
     },
   };
 }
@@ -69,7 +73,9 @@ export function History({ s, history, setHistory, draft, setDraft, hiddenCount =
       setMsg('Preencha valor recebido, km e tempo (maiores que zero).');
       return;
     }
-    const entry = buildEntry(i, s, draft.editingId);
+    // Recalcula com os custos do veículo em que a corrida foi feita (pode não ser o que está em uso agora)
+    const sv = i.veiculo && i.veiculo !== s.veiculoAtivo && s.veiculos.some((v) => v.id === i.veiculo) ? activateVehicle(s, i.veiculo) : s;
+    const entry = buildEntry(i, sv, draft.editingId);
     setHistory(draft.editingId ? history.map((e) => (e.id === draft.editingId ? entry : e)) : [...history, entry]);
     setDraft(null);
     setMsg(draft.editingId ? 'Corrida atualizada.' : 'Corrida registrada.');
@@ -77,8 +83,9 @@ export function History({ s, history, setHistory, draft, setDraft, hiddenCount =
 
   function exportCsv() {
     if (!plan.pro) return upgrade();
-    const text = historyToCsv(history);
-    const ok = downloadText(`historico-entregas-${dayKey(new Date())}.csv`, text);
+    const vs = garage(s);
+    const text = historyToCsv(history, { plataforma: (id) => platformName(s, id), veiculo: (id) => vs.find((v) => v.id === id)?.nome ?? '' });
+    const ok = downloadText(`historico-corridas-${dayKey(new Date())}.csv`, text);
     setCsvText(text);
     setMsg(ok ? 'CSV gerado. Se o download não começar, copie o texto abaixo.' : 'O navegador bloqueou o download. Copie o texto abaixo.');
   }
@@ -97,7 +104,7 @@ export function History({ s, history, setHistory, draft, setDraft, hiddenCount =
 
   return (
     <div className="flex flex-col gap-5">
-      {draft && <EntryForm draft={draft} setDraft={setDraft} onSave={saveDraft} />}
+      {draft && <EntryForm s={s} draft={draft} setDraft={setDraft} onSave={saveDraft} />}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -203,10 +210,12 @@ export function History({ s, history, setHistory, draft, setDraft, hiddenCount =
         <Card className="border-dashed text-center">
           <p className="font-display text-xl font-semibold">Nenhuma corrida neste período</p>
           <p className="mt-1 text-sm text-muted">
-            Depois de fazer uma entrega, toque em “Aceitei: registrar no histórico” na calculadora ou em “+ Registrar corrida” acima.
+            Depois de fazer uma corrida, toque em “Aceitei: registrar no histórico” na calculadora ou em “+ Registrar corrida” acima.
           </p>
         </Card>
       )}
+
+      <ByPlatform s={s} list={list} />
 
       {list.length > 0 && (
         <Card>
@@ -222,6 +231,7 @@ export function History({ s, history, setHistory, draft, setDraft, hiddenCount =
                       <span className="text-muted">{new Date(e.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                     <div className="tnum text-xs text-muted">
+                      {e.plataforma ? `${platformName(s, e.plataforma)} · ` : ''}
                       {num(e.km, 1)} km · {hm(e.minutos)} · {e.combustivel}
                       {e.obs ? ` · ${e.obs}` : ''}
                     </div>
@@ -240,7 +250,7 @@ export function History({ s, history, setHistory, draft, setDraft, hiddenCount =
                       onClick={() => {
                         setDraft({
                           editingId: e.id,
-                          input: { data: e.data, valor: e.valor, bonus: e.bonus, km: e.km, minutos: e.minutos, despesas: e.despesas, taxas: e.taxas, combustivel: e.combustivel, obs: e.obs },
+                          input: { data: e.data, valor: e.valor, bonus: e.bonus, km: e.km, minutos: e.minutos, despesas: e.despesas, taxas: e.taxas, combustivel: e.combustivel, obs: e.obs, veiculo: e.veiculo, plataforma: e.plataforma },
                         });
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
@@ -276,7 +286,9 @@ export function History({ s, history, setHistory, draft, setDraft, hiddenCount =
   );
 }
 
-function EntryForm({ draft, setDraft, onSave }: { draft: Draft; setDraft: (d: Draft | null) => void; onSave: () => void }) {
+function EntryForm({ s, draft, setDraft, onSave }: { s: Settings; draft: Draft; setDraft: (d: Draft | null) => void; onSave: () => void }) {
+  const vs = garage(s);
+  const ps = platforms(s);
   const i = draft.input;
   const set = <K extends keyof HistoryInput>(k: K) => (v: HistoryInput[K]) => setDraft({ ...draft, input: { ...i, [k]: v } });
   const local = toLocalInput(new Date(i.data));
@@ -321,6 +333,16 @@ function EntryForm({ draft, setDraft, onSave }: { draft: Draft; setDraft: (d: Dr
             />
           </div>
         </div>
+        {(vs.length > 1 || ps.length > 1) && (
+          <div className="grid grid-cols-2 gap-3">
+            {vs.length > 1 && (
+              <PickField label="Veículo" value={i.veiculo ?? ''} onChange={(v) => set('veiculo')(v || undefined)} options={vs.map((v) => [v.id, v.nome])} />
+            )}
+            {ps.length > 1 && (
+              <PickField label="Plataforma" value={i.plataforma ?? ''} onChange={(v) => set('plataforma')(v || undefined)} options={ps.map((p) => [p.id, p.nome])} />
+            )}
+          </div>
+        )}
         <TextField id="h-obs" label="Observação (opcional)" value={i.obs ?? ''} onChange={(v) => set('obs')(v)} />
         <div className="flex flex-wrap gap-2">
           <Btn kind="primary" type="submit">
@@ -381,4 +403,69 @@ function buildChart(kind: PeriodKind, ref: Date, list: HistoryEntry[]) {
     });
   }
   return { data, caption: 'por dia' };
+}
+
+function PickField({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: [string, string][] }) {
+  return (
+    <label className="flex min-w-0 flex-col gap-1">
+      <span className="text-[13px] font-medium text-muted">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full min-w-0 rounded-md border border-line bg-surface px-3 py-2 outline-none focus:border-accent">
+        <option value="">Não informado</option>
+        {options.map(([v, n]) => (
+          <option key={v} value={v}>
+            {n}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+/** Comparação entre plataformas no período (Pro). Só aparece quando há corridas de mais de uma. */
+function ByPlatform({ s, list }: { s: Settings; list: HistoryEntry[] }) {
+  const grupos = useMemo(() => {
+    const m = new Map<string, HistoryEntry[]>();
+    for (const e of list) {
+      const k = e.plataforma ?? '';
+      m.set(k, [...(m.get(k) ?? []), e]);
+    }
+    return [...m.entries()]
+      .map(([id, es]) => ({ id, nome: platformName(s, id || undefined), sum: summarize(es) }))
+      .sort((a, b) => b.sum.lucroHora - a.sum.lucroHora);
+  }, [list, s]);
+  if (grupos.length < 2) return null;
+  const melhor = grupos[0];
+  return (
+    <ProGate title="Qual plataforma dá mais lucro" hint="Compare lucro por hora, por km e por corrida entre as plataformas.">
+      <Card>
+        <SectionTitle aside={<span className="text-xs text-muted">ordenado por lucro/hora</span>}>Lucro por plataforma</SectionTitle>
+        <div className="overflow-x-auto">
+          <table className="tnum w-full text-sm">
+            <thead>
+              <tr className="label-caps border-b border-line text-left text-muted">
+                <th className="py-2 pr-2 font-semibold">Plataforma</th>
+                <th className="py-2 pr-2 text-right font-semibold">Corridas</th>
+                <th className="py-2 pr-2 text-right font-semibold">Lucro</th>
+                <th className="py-2 pr-2 text-right font-semibold">Por hora</th>
+                <th className="hidden py-2 text-right font-semibold sm:table-cell">Por km</th>
+              </tr>
+            </thead>
+            <tbody>
+              {grupos.map((g) => (
+                <tr key={g.id} className="border-b border-line/60 last:border-0">
+                  <td className="py-2 pr-2 font-medium">
+                    {g.nome} {g === melhor && <span className="ml-1 text-xs text-good">melhor</span>}
+                  </td>
+                  <td className="py-2 pr-2 text-right">{g.sum.qtd}</td>
+                  <td className={`py-2 pr-2 text-right ${g.sum.lucro >= 0 ? '' : 'text-bad'}`}>{brl(g.sum.lucro)}</td>
+                  <td className="py-2 pr-2 text-right font-semibold">{brl(g.sum.lucroHora)}</td>
+                  <td className="hidden py-2 text-right sm:table-cell">{brl(g.sum.km > 0 ? g.sum.lucro / g.sum.km : 0)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </ProGate>
+  );
 }

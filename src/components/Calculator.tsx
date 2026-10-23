@@ -5,17 +5,22 @@ import type { FuelChoice, Offer, Settings } from '../types';
 import { EMPTY_OFFER, EXAMPLE_OFFER } from '../defaults';
 import { Btn, Card, Details, NumField, Segmented } from './ui';
 import { VERDICT } from './Verdict';
+import { usePlan } from '../lib/plan';
+import { activatePlatform, activePlatform, offerLabels, platforms } from '../lib/platforms';
+import { activateVehicle, garage } from '../lib/vehicles';
 
 interface Props {
   offer: Offer;
   setOffer: (o: Offer) => void;
   settings: Settings;
+  setSettings: (s: Settings) => void;
   onRegister: (a: Analysis) => void;
   onOpenSettings: () => void;
   today: { qtd: number; lucro: number };
 }
 
-export function Calculator({ offer, setOffer, settings: s, onRegister, onOpenSettings, today }: Props) {
+export function Calculator({ offer, setOffer, settings: s, setSettings, onRegister, onOpenSettings, today }: Props) {
+  const L = offerLabels(activePlatform(s));
   const errors = useMemo(() => validateOffer(offer, s), [offer, s]);
   const a = useMemo(() => (errors.length ? null : analyze(offer, s)), [offer, s, errors]);
   const set = <K extends keyof Offer>(k: K) => (v: Offer[K]) => setOffer({ ...offer, [k]: v });
@@ -41,6 +46,7 @@ export function Calculator({ offer, setOffer, settings: s, onRegister, onOpenSet
       {/* ------------------------- ENTRADA ------------------------- */}
       <div className="flex flex-col gap-3 lg:sticky lg:top-[76px]">
         <TodayStrip today={today} metaDia={s.metas.dia} />
+        <WorkBar s={s} setSettings={setSettings} onOpenSettings={onOpenSettings} />
         <Card>
           <div className="mb-3 flex items-baseline justify-between gap-2">
             <h2 className="font-display text-xl font-semibold tracking-wide">Nova oferta</h2>
@@ -54,11 +60,11 @@ export function Calculator({ offer, setOffer, settings: s, onRegister, onOpenSet
             </div>
           </div>
           <div className="flex flex-col gap-3">
-            <NumField id="of-valor" big label="Quanto a Lalamove paga" prefix="R$" value={offer.valor} onChange={set('valor')} />
+            <NumField id="of-valor" big label={L.valor} prefix="R$" value={offer.valor} onChange={set('valor')} />
             <div className="grid grid-cols-3 gap-2">
-              <NumField id="of-km1" label="Até a coleta" suffix="km" value={offer.kmAteColeta} onChange={set('kmAteColeta')} />
-              <NumField id="of-km2" label="Até a entrega" suffix="km" value={offer.kmEntrega} onChange={set('kmEntrega')} />
-              <NumField id="of-km3" label="Retorno" suffix="km" value={offer.kmRetorno} onChange={set('kmRetorno')} />
+              <NumField id="of-km1" label={L.km1} suffix="km" value={offer.kmAteColeta} onChange={set('kmAteColeta')} />
+              <NumField id="of-km2" label={L.km2} suffix="km" value={offer.kmEntrega} onChange={set('kmEntrega')} />
+              <NumField id="of-km3" label={L.km3} suffix="km" value={offer.kmRetorno} onChange={set('kmRetorno')} />
             </div>
             <NumField
               id="of-min"
@@ -362,6 +368,44 @@ function MinFormulas({ a, s, offer }: { a: Analysis; s: Settings; offer: Offer }
         {brl(C)} = custos que não dependem do valor da corrida{s.criterios.incluirFixosNaDecisao ? ' (incluindo os fixos rateados)' : ''}. Dividir por (1 − taxa %)
         compensa a taxa percentual, que cresce junto com o valor. Para ficar 🟢 vale o maior entre a meta por hora e a margem.
       </p>
+    </div>
+  );
+}
+
+/** Veículo e plataforma em uso, com troca rápida para quem tem mais de um. */
+function WorkBar({ s, setSettings, onOpenSettings }: { s: Settings; setSettings: (s: Settings) => void; onOpenSettings: () => void }) {
+  const { plan } = usePlan();
+  const vs = garage(s);
+  const ps = platforms(s);
+  const pick = 'min-w-0 flex-1 truncate rounded-md border border-line bg-surface px-2 py-1.5 text-sm font-medium outline-none focus:border-accent';
+  return (
+    <div className="flex items-center gap-2">
+      {plan.pro && vs.length > 1 ? (
+        <select aria-label="Veículo em uso" className={pick} value={s.veiculoAtivo ?? ''} onChange={(e) => setSettings(activateVehicle(s, e.target.value))}>
+          {vs.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.nome}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <button onClick={onOpenSettings} className={`${pick} text-left`} title="Veículo em uso">
+          {s.veiculo.nome}
+        </button>
+      )}
+      {plan.pro && ps.length > 1 ? (
+        <select aria-label="Plataforma em uso" className={pick} value={s.plataformaAtiva ?? ''} onChange={(e) => setSettings(activatePlatform(s, e.target.value))}>
+          {ps.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nome}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <button onClick={onOpenSettings} className={`${pick} text-left`} title="Plataforma em uso">
+          {activePlatform(s)?.nome ?? 'Plataforma'}
+        </button>
+      )}
     </div>
   );
 }

@@ -3,8 +3,10 @@ import { DEFAULT_SETTINGS } from '../defaults';
 import { compareFuels, depreciationPerKm, fixedMonthlyForDeliveries, fixedMonthlyTotal, fixedPerHour, itemPerKm, maintenancePerKm, pendingEstimates } from '../lib/calc';
 import { downloadText } from '../lib/csv';
 import { normalize } from '../lib/storage';
+import { activeVehicle, applyVehicleToFixed, buildVehicle, replaceVehicle } from '../lib/vehicles';
 import { brl, brl4, num, pct } from '../lib/format';
 import type { FixedItem, FuelChoice, HistoryEntry, MaintItem, Settings } from '../types';
+import { GarageSection, PlatformsSection } from './Garage';
 import { Btn, Card, EstBadge, NumField, Segmented } from './ui';
 
 interface Props {
@@ -16,10 +18,11 @@ interface Props {
 }
 
 const SECTIONS = [
+  ['aj-veiculos', 'Veículos'],
+  ['aj-plataforma', 'Plataformas'],
   ['aj-combustivel', 'Combustível'],
   ['aj-desgaste', 'Manutenção'],
   ['aj-fixos', 'Custos fixos'],
-  ['aj-plataforma', 'Plataforma'],
   ['aj-dados', 'Backup'],
 ] as const;
 
@@ -47,11 +50,10 @@ export function SettingsPanel({ s, setSettings, history, setHistory, cloud }: Pr
       )}
 
       <div className="grid gap-5 [&>*]:min-w-0 xl:grid-cols-2 xl:items-start">
+        <GarageSection s={s} setSettings={setSettings} />
+        <PlatformsSection s={s} setSettings={setSettings} />
         <FuelSection s={s} setSettings={setSettings} />
-        <div className="flex flex-col gap-5">
-          <FixedSection s={s} setSettings={setSettings} />
-          <PlatformSection s={s} setSettings={setSettings} />
-        </div>
+        <FixedSection s={s} setSettings={setSettings} />
         <WearSection s={s} setSettings={setSettings} />
         <Backup s={s} setSettings={setSettings} history={history} setHistory={setHistory} cloud={cloud} />
       </div>
@@ -98,7 +100,7 @@ function FuelSection({ s, setSettings }: SP) {
       </div>
       <p className="mt-2 text-xs text-muted">
         {v.precosEstimados && 'Preços de exemplo: média ANP na capital paulista, semana de 4 a 10/out/2026. '}
-        {v.consumoEstimado && 'Consumo de exemplo: 5 km/L na gasolina (o que você informou) e etanol a 68% disso. '}
+        {v.consumoEstimado && 'Consumo de exemplo: média urbana típica para o tipo do seu veículo, com etanol a 70% da gasolina. '}
         Para medir: tanque cheio, zere o hodômetro parcial, rode normalmente e no próximo tanque cheio divida os km pelos litros colocados.
       </p>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -180,8 +182,8 @@ function WearSection({ s, setSettings }: SP) {
         </span>
       </div>
       <p className="mb-3 text-sm text-muted">
-        Preço do serviço ÷ km até a próxima vez = quanto guardar por km. O peso extra da blindagem já está nos pneus, freios e suspensão; o item da blindagem cobre só o
-        que é dela.
+        Preço do serviço ÷ km até a próxima vez = quanto guardar por km. Valores de <strong>{s.veiculo.nome}</strong>.
+        {s.manutencao.some((i) => i.categoria === 'blindagem') && ' O peso extra da blindagem já está nos pneus, freios e suspensão; o item da blindagem cobre só o que é dela.'}
       </p>
       <div className="flex flex-col divide-y divide-line">
         {s.manutencao.map((i) => (
@@ -243,8 +245,10 @@ function WearSection({ s, setSettings }: SP) {
               <NumField id="dp-k" label="Depois de" suffix="km" value={d.kmPeriodo} onChange={(n) => setD({ kmPeriodo: n, estimado: false })} allowZero={false} decimals={false} />
             </div>
             <p className="mt-2 text-xs text-muted">
-              FIPE do ix35 GLS 2.0 flex aut. 2012 em out/2026: R$ 63.609, sem contar a blindagem. Compare com anúncios de ix35 blindados com mais km. O valor só
-              “sai” quando você vender ou trocar o carro.
+              {activeVehicle(s)?.valorFipe
+                ? `FIPE ${activeVehicle(s)?.fipeMes ?? ''}: ${brl(activeVehicle(s)!.valorFipe!)}. `
+                : 'Use o valor da tabela FIPE ou de anúncios parecidos com o seu. '}
+              Veículo muito rodado vale menos que a FIPE. O valor só “sai” quando você vender ou trocar o veículo.
             </p>
           </>
         )}
@@ -264,7 +268,7 @@ function FixedSection({ s, setSettings }: SP) {
           Custos fixos
         </h2>
         <span className="tnum text-sm">
-          <strong>{brl(fixedPerHour(s))}</strong>/h de entrega
+          <strong>{brl(fixedPerHour(s))}</strong>/h de trabalho
         </span>
       </div>
       <div className="flex flex-col gap-2">
@@ -303,7 +307,7 @@ function FixedSection({ s, setSettings }: SP) {
       <div className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4">
         <NumField
           id="fx-pct"
-          label="Parte das entregas"
+          label="Parte do trabalho"
           suffix="%"
           max={100}
           value={s.fixos.percentualEntregas}
@@ -312,7 +316,7 @@ function FixedSection({ s, setSettings }: SP) {
         />
         <NumField
           id="fx-h"
-          label="Horas de entrega/mês"
+          label="Horas de trabalho/mês"
           suffix="h"
           value={s.fixos.horasEntregaMes}
           onChange={(n) => setSettings({ ...s, fixos: { ...s.fixos, horasEntregaMes: n } })}
@@ -322,31 +326,6 @@ function FixedSection({ s, setSettings }: SP) {
       <p className="tnum mt-2 text-xs text-muted">
         {brl(fixedMonthlyTotal(s))}/mês × {num(s.fixos.percentualEntregas)}% = {brl(fixedMonthlyForDeliveries(s))} ÷ {num(s.fixos.horasEntregaMes)} h ={' '}
         {brl(fixedPerHour(s))}/h
-      </p>
-    </Card>
-  );
-}
-
-/* -------- Plataforma -------- */
-function PlatformSection({ s, setSettings }: SP) {
-  return (
-    <Card>
-      <h2 id="aj-plataforma" className="mb-3 scroll-mt-24 font-display text-xl font-semibold tracking-wide">
-        Taxa da plataforma
-      </h2>
-      <div className="grid grid-cols-2 gap-3">
-        <NumField
-          id="st-tp"
-          label="Percentual"
-          suffix="%"
-          max={99}
-          value={s.plataforma.taxaPercentual}
-          onChange={(n) => setSettings({ ...s, plataforma: { ...s.plataforma, taxaPercentual: n } })}
-        />
-        <NumField id="st-tf" label="Fixa por corrida" prefix="R$" value={s.plataforma.taxaFixa} onChange={(n) => setSettings({ ...s, plataforma: { ...s.plataforma, taxaFixa: n } })} />
-      </div>
-      <p className="mt-2 text-xs text-muted">
-        Começa em zero: não há valor oficial da Lalamove embutido. Se o valor que aparece na oferta já é o que cai na sua conta, deixe zero.
       </p>
     </Card>
   );
@@ -413,9 +392,9 @@ function Backup({ s, setSettings, history, setHistory, cloud }: Props) {
             <Btn
               kind="danger"
               onClick={() => {
-                setSettings(DEFAULT_SETTINGS);
+                setSettings(resetToExamples(s));
                 setConfirmReset(false);
-                setMsg('Ajustes voltaram aos valores de exemplo. O histórico foi mantido.');
+                setMsg('Os custos do veículo em uso, os fixos e as metas voltaram aos valores de exemplo. Veículos, plataformas e histórico foram mantidos.');
               }}
             >
               Sim, voltar aos exemplos
@@ -445,3 +424,19 @@ function Backup({ s, setSettings, history, setHistory, cloud }: Props) {
   );
 }
 
+/** Volta os custos do veículo em uso, os fixos e as metas aos exemplos, sem mexer na garagem nem nas plataformas. */
+function resetToExamples(s: Settings): Settings {
+  const base: Settings = {
+    ...DEFAULT_SETTINGS,
+    veiculo: { ...DEFAULT_SETTINGS.veiculo, nome: s.veiculo.nome },
+    veiculos: s.veiculos,
+    veiculoAtivo: s.veiculoAtivo,
+    plataformas: s.plataformas,
+    plataformaAtiva: s.plataformaAtiva,
+    plataforma: s.plataforma,
+  };
+  const v = activeVehicle(s);
+  if (!v) return base;
+  const fresh = buildVehicle({ ...v, id: v.id, valorFipe: v.valorFipe });
+  return applyVehicleToFixed(replaceVehicle(base, fresh), fresh);
+}

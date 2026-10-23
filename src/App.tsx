@@ -4,6 +4,8 @@ import { AccountScreen, STATUS_TEXT } from './components/AccountScreen';
 import { AuthScreen, NewPasswordScreen } from './components/AuthScreen';
 import { Calculator } from './components/Calculator';
 import { Goals } from './components/Goals';
+import { LegalLinks, LegalScreen, type LegalDoc } from './components/LegalScreen';
+import { Onboarding } from './components/Onboarding';
 import { PlanScreen } from './components/PlanScreen';
 import { History, type Draft } from './components/History';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -53,7 +55,14 @@ function Main({ uid }: { uid: string | null }) {
   const app = useAppData(uid);
   const planLoader = usePlanLoader(uid);
   const plan = planLoader.plan;
-  const [screen, setScreen] = useState<'app' | 'login' | 'conta' | 'plano'>('app');
+  type Screen = 'app' | 'login' | 'conta' | 'plano' | 'legal';
+  const [screen, setScreen] = useState<Screen>('app');
+  const [legal, setLegal] = useState<{ doc: LegalDoc; from: Screen }>({ doc: 'termos', from: 'app' });
+  const openLegal = (doc: LegalDoc) => {
+    setLegal({ doc, from: screen === 'legal' ? legal.from : screen });
+    setScreen('legal');
+    window.scrollTo({ top: 0 });
+  };
 
   // Virou Pro (pagou): busca de novo para trazer o histórico antigo que o plano grátis escondia
   const lastPro = useRef<boolean | null>(null);
@@ -93,11 +102,14 @@ function Main({ uid }: { uid: string | null }) {
       accountLabel={!auth.enabled ? null : uid ? 'Conta' : 'Entrar'}
       onAccount={() => setScreen(uid ? 'conta' : 'login')}
       closeOverlay={() => setScreen('app')}
+      onLegal={openLegal}
       overlay={
         screen === 'login' && !uid ? (
-          <AuthScreen onClose={() => setScreen('app')} />
+          <AuthScreen onClose={() => setScreen('app')} onLegal={openLegal} />
         ) : screen === 'conta' && uid ? (
           <AccountScreen status={app.status} hasPending={app.hasPending} forgetDevice={app.forgetDevice} onBack={() => setScreen('app')} />
+        ) : screen === 'legal' ? (
+          <LegalScreen doc={legal.doc} onDoc={(doc) => setLegal({ ...legal, doc })} onBack={() => setScreen(legal.from)} />
         ) : screen === 'plano' ? (
           <PlanScreen plan={plan} loggedIn={!!uid} onLogin={() => setScreen('login')} onBack={() => setScreen('app')} refresh={planLoader.refresh} />
         ) : null
@@ -140,11 +152,12 @@ interface ShellProps {
   accountLabel: string | null;
   onAccount: () => void;
   closeOverlay: () => void;
+  onLegal: (d: LegalDoc) => void;
   overlay: ReactNode;
   banner: ReactNode;
 }
 
-function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer, history, setHistory, statusText, statusBad, accountLabel, onAccount, closeOverlay, overlay, banner }: ShellProps) {
+function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer, history, setHistory, statusText, statusBad, accountLabel, onAccount, closeOverlay, onLegal, overlay, banner }: ShellProps) {
   const [tab, setTab] = useState<Tab>(() => {
     const h = typeof location !== 'undefined' ? location.hash.slice(1) : '';
     return (TABS.some((t) => t.id === h) ? h : 'corrida') as Tab;
@@ -192,6 +205,8 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
         despesas: a.despesas,
         taxas: Math.round(a.taxas * 100) / 100,
         combustivel: a.combustivel,
+        veiculo: settings.veiculoAtivo ?? undefined,
+        plataforma: settings.plataformaAtiva ?? undefined,
       },
     });
     goTab('historico');
@@ -205,7 +220,7 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
             <div className="font-display text-2xl font-bold leading-none tracking-wide">
               Vale a <span className="text-accent">Corrida?</span>
             </div>
-            <div className="truncate text-xs text-muted">{settings.veiculo.nome}</div>
+            <div className="truncate text-xs text-muted">{settings.veiculos.length ? settings.veiculo.nome : 'Primeiros passos'}</div>
           </div>
           <nav className="hidden gap-1 sm:flex" aria-label="Seções">
             {TABS.map((t) => (
@@ -248,12 +263,21 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
         {overlay ?? (
           <>
         {banner}
-        {tab === 'corrida' && <Calculator offer={offer} setOffer={setOffer} settings={settings} onRegister={registerFromAnalysis} onOpenSettings={openSettings} today={today} />}
+        {settings.veiculos.length === 0 ? (
+          <Onboarding s={settings} setSettings={setSettings} />
+        ) : (
+          <>
+        {tab === 'corrida' && <Calculator offer={offer} setOffer={setOffer} settings={settings} setSettings={setSettings} onRegister={registerFromAnalysis} onOpenSettings={openSettings} today={today} />}
         {tab === 'metas' && <Goals s={settings} setSettings={setSettings} hist={hist} />}
         {tab === 'historico' && <History s={settings} history={visible} setHistory={setVisible} draft={draft} setDraft={setDraft} hiddenCount={hidden.length} />}
         {tab === 'ajustes' && <SettingsPanel s={settings} setSettings={setSettings} history={history} setHistory={setHistory} cloud={accountLabel === 'Conta'} />}
           </>
         )}
+          </>
+        )}
+        <footer className="mt-10 border-t border-line pt-4 text-center text-xs text-muted">
+          <LegalLinks onOpen={onLegal} />
+        </footer>
       </main>
 
       {/* Navegação inferior no celular */}

@@ -7,12 +7,14 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
  * Política de segurança de conteúdo na versão publicada: o app só carrega scripts dele mesmo
  * e só conversa com o próprio Supabase. (GitHub Pages não deixa mandar cabeçalhos, por isso vai como <meta>.)
  */
-function csp(supabaseUrl: string | undefined): Plugin {
+function csp(supabaseUrl: string | undefined, turnstile: boolean): Plugin {
   const api = supabaseUrl ? new URL(supabaseUrl) : null;
-  const connect = ["'self'", api ? `${api.origin} wss://${api.host}` : ''].filter(Boolean).join(' ');
+  // FIPE (parallelum.com.br): cadastro de veículo por marca, modelo e ano
+  const connect = ["'self'", api ? `${api.origin} wss://${api.host}` : '', 'https://parallelum.com.br'].filter(Boolean).join(' ');
   const policy = [
     "default-src 'self'",
-    "script-src 'self'",
+    `script-src 'self'${turnstile ? ' https://challenges.cloudflare.com' : ''}`,
+    ...(turnstile ? ['frame-src https://challenges.cloudflare.com'] : []),
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob:",
@@ -35,9 +37,9 @@ function csp(supabaseUrl: string | undefined): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
   return {
-    plugins: mode === 'single' ? [react(), viteSingleFile()] : [react(), csp(env.VITE_SUPABASE_URL)],
+    plugins: mode === 'single' ? [react(), viteSingleFile()] : [react(), csp(env.VITE_SUPABASE_URL, !!env.VITE_TURNSTILE_SITE_KEY)],
     base: './',
     // Testes nunca falam com o Supabase de verdade, mesmo com .env.local preenchido
-    test: { env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '' } },
+    test: { env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '', VITE_TURNSTILE_SITE_KEY: '' } },
   };
 });

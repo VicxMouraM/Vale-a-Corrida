@@ -20,6 +20,8 @@ export interface RideRow {
   custo_fixo: number;
   lucro: number;
   obs: string | null;
+  veiculo: string | null;
+  plataforma: string | null;
 }
 
 export function toRow(e: HistoryEntry): RideRow {
@@ -40,6 +42,8 @@ export function toRow(e: HistoryEntry): RideRow {
     custo_fixo: e.custoFixo,
     lucro: e.lucro,
     obs: e.obs ?? null,
+    veiculo: e.veiculo ?? null,
+    plataforma: e.plataforma ?? null,
   };
 }
 
@@ -61,6 +65,8 @@ export function fromRow(r: RideRow): HistoryEntry {
     custoFixo: r.custo_fixo,
     lucro: r.lucro,
     obs: r.obs ?? undefined,
+    veiculo: r.veiculo ?? undefined,
+    plataforma: r.plataforma ?? undefined,
   };
 }
 
@@ -167,7 +173,7 @@ export async function fetchCloud(sb: SupabaseClient, uid: string): Promise<Cloud
   for (let from = 0; ; from += PAGE) {
     const r = await sb
       .from('rides')
-      .select('id, data, valor, bonus, km, minutos, despesas, taxas, combustivel, preco_litro, kml, custo_combustivel, custo_desgaste, custo_fixo, lucro, obs')
+      .select('id, data, valor, bonus, km, minutos, despesas, taxas, combustivel, preco_litro, kml, custo_combustivel, custo_desgaste, custo_fixo, lucro, obs, veiculo, plataforma')
       .eq('user_id', uid)
       .order('data', { ascending: true })
       .order('id', { ascending: true })

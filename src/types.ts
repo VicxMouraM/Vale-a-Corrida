@@ -20,8 +20,48 @@ export interface FixedItem {
   estimado: boolean;
 }
 
+export type VehicleType = 'popular' | 'hatch_sedan' | 'suv' | 'picape' | 'utilitario' | 'moto';
+
+/** Um veículo da garagem. Os campos de custo do veículo ATIVO vivem no topo de Settings (veiculo, manutencao, depreciacao). */
+export interface VehicleProfile {
+  id: string;
+  nome: string;
+  tipo: VehicleType;
+  marca?: string;
+  modelo?: string;
+  ano?: number;
+  fipeCodigo?: string;
+  valorFipe?: number;
+  fipeMes?: string;
+  automatico: boolean;
+  blindado: boolean;
+  kmlGasolina: number;
+  kmlEtanol: number;
+  combustivelPadrao: FuelChoice;
+  consumoEstimado: boolean;
+  manutencao: MaintItem[];
+  depreciacao: Settings['depreciacao'];
+}
+
+export type PlatformKind = 'passageiros' | 'entregas';
+
+/** Uma plataforma em que o usuário trabalha. As taxas da ATIVA vivem no topo de Settings (plataforma). */
+export interface PlatformProfile {
+  id: string; // 'uber', '99', 'lalamove'… ou 'outra-…'
+  nome: string;
+  tipo: PlatformKind;
+  taxaPercentual: number;
+  taxaFixa: number;
+  estimado: boolean;
+}
+
 export interface Settings {
   exemplosVersao?: number; // versão dos valores de exemplo (para atualizar só o que ainda não foi editado)
+  /** Garagem. Vazia = usuário ainda não configurou (mostra o assistente de primeiro uso). */
+  veiculos: VehicleProfile[];
+  veiculoAtivo: string | null;
+  plataformas: PlatformProfile[];
+  plataformaAtiva: string | null;
   veiculo: {
     nome: string;
     precoGasolina: number;
@@ -97,6 +137,8 @@ export interface HistoryEntry {
   custoFixo: number; // rateio
   lucro: number; // valor + bonus − tudo
   obs?: string;
+  veiculo?: string; // id do veículo usado
+  plataforma?: string; // id da plataforma
 }
 
 export type Tab = 'corrida' | 'historico' | 'metas' | 'ajustes';

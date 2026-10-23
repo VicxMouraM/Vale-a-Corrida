@@ -14,6 +14,10 @@ export const EXEMPLOS_VERSAO = 2;
 
 export const DEFAULT_SETTINGS: Settings = {
   exemplosVersao: EXEMPLOS_VERSAO,
+  veiculos: [],
+  veiculoAtivo: null,
+  plataformas: [],
+  plataformaAtiva: null,
   veiculo: {
     nome: 'Hyundai ix35 GLS 2.0 2012 automático blindado',
     precoGasolina: 6.34,

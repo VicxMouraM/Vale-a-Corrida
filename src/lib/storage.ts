@@ -1,4 +1,6 @@
 import { DEFAULT_SETTINGS, EXAMPLE_OFFER, EXEMPLOS_VERSAO } from '../defaults';
+import { platformFromLegacy } from './platforms';
+import { vehicleFromLegacy } from './vehicles';
 import type { HistoryEntry, Offer, Settings } from '../types';
 
 const KEY = 'vale-a-corrida:v1';
@@ -29,10 +31,31 @@ function merge<T>(base: T, saved: unknown): T {
 export function normalize(p: { settings?: unknown; offer?: unknown; history?: unknown }): Persisted {
   const raw = p.settings as Partial<Settings> | undefined;
   return {
-    settings: refreshExamples(merge(DEFAULT_SETTINGS, raw), raw?.exemplosVersao ?? (raw ? 1 : EXEMPLOS_VERSAO)),
+    settings: migrateGarage(refreshExamples(merge(DEFAULT_SETTINGS, raw), raw?.exemplosVersao ?? (raw ? 1 : EXEMPLOS_VERSAO)), raw),
     offer: merge(EXAMPLE_OFFER, p.offer),
     history: cleanHistory(p.history),
   };
+}
+
+/**
+ * Ajustes salvos antes da garagem e das plataformas: o carro e a taxa que estavam configurados
+ * viram o primeiro veículo e a primeira plataforma. Ajustes novos (sem nada salvo) ficam vazios
+ * para o assistente de primeiro uso.
+ */
+function migrateGarage(s: Settings, raw: Partial<Settings> | undefined): Settings {
+  if (!raw) return s;
+  let out = s;
+  if (!Array.isArray(raw.veiculos)) {
+    const v = vehicleFromLegacy(out);
+    out = { ...out, veiculos: [v], veiculoAtivo: v.id };
+  }
+  if (!Array.isArray(raw.plataformas)) {
+    const p = platformFromLegacy(out);
+    out = { ...out, plataformas: [p], plataformaAtiva: p.id };
+  }
+  if (out.veiculos.length && !out.veiculos.some((v) => v.id === out.veiculoAtivo)) out = { ...out, veiculoAtivo: out.veiculos[0].id };
+  if (out.plataformas.length && !out.plataformas.some((p) => p.id === out.plataformaAtiva)) out = { ...out, plataformaAtiva: out.plataformas[0].id };
+  return out;
 }
 
 const NUM_FIELDS = ['valor', 'bonus', 'km', 'minutos', 'despesas', 'taxas', 'precoLitro', 'kml', 'custoCombustivel', 'custoDesgaste', 'custoFixo', 'lucro'] as const;
@@ -57,6 +80,8 @@ export function cleanHistory(raw: unknown): HistoryEntry[] {
     }
     if (!ok) continue;
     if (typeof r.obs === 'string' && r.obs) e.obs = r.obs.slice(0, 500);
+    if (typeof r.veiculo === 'string' && r.veiculo) e.veiculo = r.veiculo.slice(0, 64);
+    if (typeof r.plataforma === 'string' && r.plataforma) e.plataforma = r.plataforma.slice(0, 40);
     ids.add(id);
     out.push(e as unknown as HistoryEntry);
   }

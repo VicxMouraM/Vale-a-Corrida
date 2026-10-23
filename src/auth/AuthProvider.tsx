@@ -1,6 +1,9 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { LEGAL } from '../legal';
 import { redirectUrl, supabase } from '../lib/supabase';
+
+const ACEITE_GOOGLE = 'vale-a-corrida:aceite-google';
 
 interface AuthState {
   /** false quando o app não tem Supabase configurado (só modo convidado). */
@@ -9,10 +12,10 @@ interface AuthState {
   user: User | null;
   /** true depois de abrir o link de "esqueci a senha": o app pede a nova senha. */
   recovering: boolean;
-  signInPassword: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, nome: string) => Promise<'confirm-email' | 'signed-in'>;
+  signInPassword: (email: string, password: string, captchaToken?: string) => Promise<void>;
+  signUp: (email: string, password: string, nome: string, captchaToken?: string) => Promise<'confirm-email' | 'signed-in'>;
   signInGoogle: () => Promise<void>;
-  sendPasswordReset: (email: string) => Promise<void>;
+  sendPasswordReset: (email: string, captchaToken?: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -36,6 +39,7 @@ export function authErrorMessage(e: unknown): string {
   if (m.includes('rate limit') || m.includes('too many') || m.includes('security purposes')) return 'Muitas tentativas. Espere um pouco e tente de novo.';
   if (m.includes('provider is not enabled') || m.includes('unsupported provider')) return 'Essa forma de login ainda não está ativada.';
   if (m.includes('failed to fetch') || m.includes('network')) return 'Sem conexão. Verifique a internet.';
+  if (m.includes('captcha')) return 'Confirme que você não é um robô e tente de novo.';
   return msg;
 }
 
@@ -53,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       if (event === 'PASSWORD_RECOVERY') setRecovering(true);
+      if (event === 'SIGNED_IN' && s) recordGoogleConsent(s.user.id);
     });
     return () => data.subscription.unsubscribe();
   }, []);
@@ -62,25 +67,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     user: session?.user ?? null,
     recovering,
-    async signInPassword(email, password) {
-      const { error } = await need().auth.signInWithPassword({ email: email.trim(), password });
+    async signInPassword(email, password, captchaToken) {
+      const { error } = await need().auth.signInWithPassword({ email: email.trim(), password, options: { captchaToken } });
       if (error) throw error;
     },
-    async signUp(email, password, nome) {
+    async signUp(email, password, nome, captchaToken) {
       const { data, error } = await need().auth.signUp({
         email: email.trim(),
         password,
-        options: { emailRedirectTo: redirectUrl(), data: { nome: nome.trim() } },
+        // termos_versao: o banco grava o aceite dos Termos e da Política no perfil
+        options: { emailRedirectTo: redirectUrl(), captchaToken, data: { nome: nome.trim(), termos_versao: LEGAL.versao } },
       });
       if (error) throw error;
       return data.session ? 'signed-in' : 'confirm-email';
     },
     async signInGoogle() {
+      // O aviso de aceite aparece antes do botão; o aceite é gravado quando a pessoa volta logada
+      try {
+        sessionStorage.setItem(ACEITE_GOOGLE, LEGAL.versao);
+      } catch {
+        /* sem sessionStorage */
+      }
       const { error } = await need().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectUrl() } });
       if (error) throw error;
     },
-    async sendPasswordReset(email) {
-      const { error } = await need().auth.resetPasswordForEmail(email.trim(), { redirectTo: redirectUrl() });
+    async sendPasswordReset(email, captchaToken) {
+      const { error } = await need().auth.resetPasswordForEmail(email.trim(), { redirectTo: redirectUrl(), captchaToken });
       if (error) throw error;
     },
     async updatePassword(password) {
@@ -114,4 +126,21 @@ export function passwordProblem(p: string): string | null {
   if (p.length < 8) return 'Use pelo menos 8 caracteres.';
   if (!/[a-zA-Z]/.test(p) || !/\d/.test(p)) return 'Misture letras e números.';
   return null;
+}
+
+/** Grava o aceite dos Termos de quem entrou com Google (só se viu o aviso nesta sessão e ainda não tinha aceite). */
+function recordGoogleConsent(uid: string) {
+  let versao: string | null = null;
+  try {
+    versao = sessionStorage.getItem(ACEITE_GOOGLE);
+    sessionStorage.removeItem(ACEITE_GOOGLE);
+  } catch {
+    return;
+  }
+  const sb = supabase;
+  if (!versao || !sb) return;
+  // setTimeout: o Supabase pede para não chamar a API dentro do onAuthStateChange
+  setTimeout(() => {
+    void sb.from('profiles').update({ aceitou_termos_em: new Date().toISOString(), termos_versao: versao }).eq('id', uid).is('aceitou_termos_em', null);
+  }, 0);
 }

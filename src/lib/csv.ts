@@ -4,11 +4,11 @@ const n = (v: number) => (Number.isFinite(v) ? v.toFixed(2).replace('.', ',') : 
 const q = (s: string) => `"${s.replace(/"/g, '""')}"`;
 
 /** CSV com ponto e vírgula e vírgula decimal (abre direto no Excel/Sheets em português). */
-export function historyToCsv(list: HistoryEntry[]): string {
+export function historyToCsv(list: HistoryEntry[], names?: { plataforma: (id?: string) => string; veiculo: (id?: string) => string }): string {
   const head = [
     'data', 'hora', 'valor_recebido', 'bonus', 'km', 'minutos', 'despesas', 'taxas', 'combustivel',
     'preco_litro', 'km_por_litro', 'custo_combustivel', 'reserva_desgaste', 'rateio_fixos', 'lucro_estimado',
-    'lucro_por_hora', 'observacao',
+    'lucro_por_hora', 'plataforma', 'veiculo', 'observacao',
   ];
   const rows = list
     .slice()
@@ -20,7 +20,10 @@ export function historyToCsv(list: HistoryEntry[]): string {
         d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         n(e.valor), n(e.bonus), n(e.km), String(Math.round(e.minutos)), n(e.despesas), n(e.taxas), e.combustivel,
         n(e.precoLitro), n(e.kml), n(e.custoCombustivel), n(e.custoDesgaste), n(e.custoFixo), n(e.lucro),
-        n(e.minutos > 0 ? e.lucro / (e.minutos / 60) : 0), q(e.obs ?? ''),
+        n(e.minutos > 0 ? e.lucro / (e.minutos / 60) : 0),
+        q(e.plataforma && names ? names.plataforma(e.plataforma) : ''),
+        q(e.veiculo && names ? names.veiculo(e.veiculo) : ''),
+        q(e.obs ?? ''),
       ].join(';');
     });
   return '﻿' + [head.join(';'), ...rows].join('\r\n');

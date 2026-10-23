@@ -1,5 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { authErrorMessage, passwordProblem, useAuth } from '../auth/AuthProvider';
+import { LegalLinks, type LegalDoc } from './LegalScreen';
+import { Turnstile, TURNSTILE_SITE_KEY } from './Turnstile';
 import { Btn, Card, TextField } from './ui';
 
 type Mode = 'entrar' | 'criar' | 'esqueci';
@@ -9,7 +11,7 @@ const MODES: { id: Mode; label: string }[] = [
   { id: 'criar', label: 'Criar conta' },
 ];
 
-export function AuthScreen({ onClose }: { onClose: () => void }) {
+export function AuthScreen({ onClose, onLegal }: { onClose: () => void; onLegal: (d: LegalDoc) => void }) {
   const auth = useAuth();
   const [mode, setMode] = useState<Mode>('entrar');
   const [nome, setNome] = useState('');
@@ -19,6 +21,11 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [aceite, setAceite] = useState(false);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
+  const captchaOk = !TURNSTILE_SITE_KEY || !!captcha;
+  const token = captcha ?? undefined;
 
   function go(m: Mode) {
     setMode(m);
@@ -36,23 +43,25 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
       setError(authErrorMessage(e));
     } finally {
       setBusy(false);
+      setCaptchaReset((n) => n + 1); // o token do CAPTCHA só vale uma vez
     }
   }
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    if (mode === 'entrar') return run(() => auth.signInPassword(email, password));
+    if (mode === 'entrar') return run(() => auth.signInPassword(email, password, token));
     if (mode === 'esqueci')
       return run(async () => {
-        await auth.sendPasswordReset(email);
+        await auth.sendPasswordReset(email, token);
         setInfo('Se esse e-mail tiver conta, enviamos um link para criar uma nova senha. Confira também o spam.');
       });
     // criar
     const p = passwordProblem(password);
     if (p) return setError(p);
     if (password !== password2) return setError('As senhas não são iguais.');
+    if (!aceite) return setError('Para criar a conta, aceite os Termos de uso e a Política de privacidade.');
     return run(async () => {
-      const r = await auth.signUp(email, password, nome);
+      const r = await auth.signUp(email, password, nome, token);
       if (r === 'confirm-email') setInfo(`Enviamos um link de confirmação para ${email.trim()}. Abra o e-mail neste aparelho para ativar a conta.`);
     });
   }
@@ -63,7 +72,7 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
       ? emailOk && password.length > 0
       : mode === 'esqueci'
         ? emailOk
-        : emailOk && password.length > 0 && password2.length > 0;
+        : emailOk && password.length > 0 && password2.length > 0 && aceite;
 
   const submitLabel = mode === 'entrar' ? 'Entrar' : mode === 'criar' ? 'Criar conta' : 'Enviar link';
 
@@ -85,6 +94,9 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
             <SocialBtn onClick={() => run(auth.signInGoogle)} disabled={busy}>
               <GoogleIcon /> Continuar com Google
             </SocialBtn>
+            <p className="mt-2 text-center text-xs text-muted">
+              Ao continuar com o Google, você aceita os <LegalLinks onOpen={onLegal} />.
+            </p>
             <div className="my-4 flex items-center gap-3 text-xs text-muted">
               <span className="h-px flex-1 bg-line" /> ou <span className="h-px flex-1 bg-line" />
             </div>
@@ -121,8 +133,15 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
             <>
               <TextField label="Repita a senha" type="password" value={password2} onChange={setPassword2} autoComplete="new-password" />
               <p className="-mt-1 text-xs text-muted">Pelo menos 8 caracteres, com letras e números.</p>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" className="mt-1" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
+                <span>
+                  Li e aceito os <LegalLinks onOpen={onLegal} />.
+                </span>
+              </label>
             </>
           )}
+          <Turnstile onToken={setCaptcha} resetKey={captchaReset} />
 
           {error && (
             <p role="alert" className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">
@@ -135,7 +154,7 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
             </p>
           )}
 
-          <Btn type="submit" kind="primary" disabled={busy || !canSubmit} className="py-2.5">
+          <Btn type="submit" kind="primary" disabled={busy || !canSubmit || !captchaOk} className="py-2.5">
             {busy ? 'Aguarde…' : submitLabel}
           </Btn>
         </form>

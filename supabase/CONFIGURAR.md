@@ -117,3 +117,43 @@ No Asaas: **Integrações → Webhooks → Adicionar**
 | Atrasou | Sim, até acabar a tolerância |
 | Cancelou | Sim, até o fim do período pago |
 | Estorno ou chargeback | Não, corta na hora |
+## 6. Veículos, plataformas e termos
+
+No **SQL Editor**, rode **antes de publicar a nova versão do app**:
+1. [`migrations/0005_veiculos_plataformas.sql`](migrations/0005_veiculos_plataformas.sql): guarda o veículo de cada corrida e limita o Grátis a 1 veículo e 1 plataforma.
+2. [`migrations/0006_aceite_termos.sql`](migrations/0006_aceite_termos.sql): registra no perfil quando e qual versão dos Termos a pessoa aceitou.
+
+> Se o app for publicado antes da 0005, a conta não carrega, porque o app procura a coluna `veiculo`.
+
+## 7. Antes de abrir ao público (checklist)
+
+**Textos legais**
+- [ ] Preencha nome ou razão social, CPF ou CNPJ, e-mail e cidade em [`src/legal.ts`](../src/legal.ts).
+- [ ] Peça a um advogado para revisar os Termos e a Política de privacidade, principalmente antes de cobrar.
+
+**CAPTCHA (Cloudflare Turnstile, grátis)**
+1. Em [dash.cloudflare.com](https://dash.cloudflare.com) → **Turnstile → Add widget**. Domínios: o do app e `localhost`. Modo: *Managed*.
+2. No Supabase: **Authentication → Attack Protection → Enable Captcha protection** → Turnstile → cole a **Secret key**.
+3. No GitHub (Variables) e no `.env.local`: `VITE_TURNSTILE_SITE_KEY` = a **Site key**. Publique de novo.
+   > Faça os passos 2 e 3 juntos: com o CAPTCHA ligado no Supabase e sem a chave no app, ninguém consegue entrar com e-mail.
+
+**E-mails**
+- [ ] **Authentication → Emails → SMTP Settings**: use um provedor como Resend, Brevo ou Amazon SES. O e-mail padrão do Supabase envia poucos por hora e cai no spam.
+- [ ] **Authentication → Emails → Templates**: cole [`emails/confirmar-cadastro.html`](emails/confirmar-cadastro.html) em *Confirm signup* e [`emails/recuperar-senha.html`](emails/recuperar-senha.html) em *Reset password*. Os assuntos estão no topo de cada arquivo.
+
+**Asaas em produção**
+1. Crie a conta em [asaas.com](https://www.asaas.com) com o seu CPF ou CNPJ e espere a aprovação.
+2. Gere a chave de API de produção e troque os segredos:
+   ```bash
+   npx supabase secrets set ASAAS_API_KEY='$aact_prod_...'
+   npx supabase secrets set ASAAS_API_URL=https://api.asaas.com/v3
+   ```
+3. Cadastre o webhook de novo **na conta de produção** (mesma URL, mesmo token, mesmos eventos do item 5.4).
+4. Faça uma assinatura real com o seu próprio cartão ou Pix, confira se o Pro libera e cancele.
+
+**Domínio próprio (opcional, recomendado)**
+1. Registre o domínio (por exemplo no registro.br) e, em **GitHub → Settings → Pages → Custom domain**, siga as instruções de DNS. Ative **Enforce HTTPS**.
+2. Atualize o novo endereço em: Supabase (*Site URL* e *Redirect URLs*), Google Cloud (*Authorized JavaScript origins*), Turnstile (domínios) e `APP_ORIGINS`:
+   ```bash
+   npx supabase secrets set APP_ORIGINS=https://seudominio.com.br,https://SEU-USUARIO.github.io
+   ```

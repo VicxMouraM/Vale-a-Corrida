@@ -105,7 +105,7 @@ export function validateOffer(o: Offer, s: Settings): string[] {
     if (!Number.isFinite(v)) errs.push(`${n}: número inválido.`);
     else if (v < 0) errs.push(`${n} não pode ser negativo.`);
   }
-  if (o.valor <= 0) errs.push('Informe quanto a Lalamove vai pagar.');
+  if (o.valor <= 0) errs.push('Informe o valor da oferta.');
   if (o.kmAteColeta + o.kmEntrega + o.kmRetorno <= 0) errs.push('Informe pelo menos uma distância.');
   if (o.minutos <= 0) errs.push('Informe o tempo estimado (minutos).');
   if (o.minutos > 24 * 60) errs.push('Tempo acima de 24 h: confira o valor.');
@@ -344,6 +344,8 @@ export interface HistoryInput {
   taxas: number;
   combustivel: Fuel;
   obs?: string;
+  veiculo?: string;
+  plataforma?: string;
 }
 
 /** Congela os parâmetros atuais (preço, consumo, reservas) no registro, para o histórico não mudar depois. */
@@ -370,6 +372,8 @@ export function buildEntry(input: HistoryInput, s: Settings, id?: string): Histo
     custoFixo,
     lucro,
     obs: input.obs,
+    veiculo: input.veiculo,
+    plataforma: input.plataforma,
   };
 }
 

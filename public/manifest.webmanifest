@@ -1,7 +1,7 @@
 {
   "name": "Vale a Corrida?",
   "short_name": "Vale a Corrida",
-  "description": "Calculadora para decidir se uma entrega da Lalamove dá lucro com o seu carro.",
+  "description": "Calcule o lucro real de cada corrida e entrega com os custos do seu veículo.",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",

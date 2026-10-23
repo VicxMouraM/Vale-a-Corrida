@@ -1,6 +1,6 @@
 # Vale a Corrida?
 
-Calculadora para decidir, antes de aceitar, se uma entrega da Lalamove dá lucro de verdade com um Hyundai ix35 GLS 2.0 2012 automático blindado (ou qualquer outro carro: tudo é configurável).
+Calculadora para motoristas e entregadores decidirem, antes de aceitar, se uma corrida ou entrega dá lucro de verdade, e acompanharem o lucro real ao longo do tempo. Funciona com Uber, 99, iFood, Lalamove, inDrive e outras, e com qualquer veículo: carro, moto ou utilitário, cadastrado pela tabela FIPE.
 
 React 18 + TypeScript + Tailwind CSS + Vite + Supabase.
 
@@ -55,10 +55,10 @@ Cada informação aparece em um só lugar, e cada valor é editado em um só lug
 
 | Aba | O que faz |
 |---|---|
-| **Corrida** | Resumo do dia em relação à meta. Você digita a oferta e vê um único painel com o semáforo 🟢🟡🔴, o motivo, quanto recebe, gasta, sobra e ganha por hora, e o valor mínimo aceitável. Abaixo, "A conta da corrida" mostra cada custo com a sua fórmula e separa o que sai do bolso hoje do que é reserva para o carro. |
-| **Histórico** | Registra as corridas reais. Mostra painel com totais e médias, gráficos e filtros por dia, semana e mês, e exporta CSV (separador `;`, vírgula decimal, abre direto no Excel). |
+| **Corrida** | Veículo e plataforma em uso (com troca rápida no Pro) e resumo do dia em relação à meta. Você digita a oferta e vê um único painel com o semáforo 🟢🟡🔴, o motivo, quanto recebe, gasta, sobra e ganha por hora, e o valor mínimo aceitável. Abaixo, "A conta da corrida" mostra cada custo com a sua fórmula e separa o que sai do bolso hoje do que é reserva para o carro. |
+| **Histórico** | Registra as corridas reais, cada uma com veículo e plataforma. Mostra totais e médias; no Pro, gráficos, comparação de lucro entre plataformas e exportação CSV (separador `;`, vírgula decimal, abre direto no Excel). No Grátis, os últimos 30 dias. |
 | **Metas** | Regras do semáforo (lucro mínimo por hora, margem mínima, incluir ou não os fixos), metas por dia, semana e mês, e quanto precisa faturar. Avisa só quando as metas não batem entre si. |
-| **Ajustes** | Combustível (preços, consumo e a comparação gasolina × etanol), manutenção e depreciação, custos fixos, taxa da plataforma e backup. Valores de exemplo têm a etiqueta "estimativa": ela some quando você edita o valor ou toca em "confirmar". |
+| **Ajustes** | Veículos (FIPE), plataformas e taxas, combustível (preços, consumo e a comparação gasolina × etanol), manutenção e depreciação, custos fixos e backup. Valores de exemplo têm a etiqueta "estimativa": ela some quando você edita o valor ou toca em "confirmar". |
 
 ## Fórmulas principais
 
@@ -83,28 +83,22 @@ faturamento p/ meta = (lucro + combustível + reservas + fixos + taxas fixas) ÷
 
 ## Sobre os valores padrão
 
-Exemplos para um ix35 GLS 2.0 flex automático 2012 blindado, rodando em São Paulo, pesquisados em outubro de 2026. Todos aparecem com a etiqueta "estimativa" até você editar ou confirmar.
+No primeiro uso, o assistente pergunta as plataformas, o veículo e as metas. Os custos do veículo começam com valores típicos do tipo escolhido, todos com a etiqueta "estimativa" até o usuário editar ou confirmar. A fonte é [`src/lib/vehicles.ts`](src/lib/vehicles.ts).
 
-| Item | Exemplo | Base |
-|---|---|---|
-| Gasolina / etanol | R$ 6,34 / R$ 3,91 por litro | Média ANP na capital paulista, semana 04–10/10/2026 |
-| Consumo | 5,0 km/L gasolina · 3,4 km/L etanol | 5 km/L informado por você; etanol a 68% da gasolina, proporção do ix35 2.0 flex |
-| Valor do carro | R$ 70.000 hoje → R$ 62.000 após 30.000 km | FIPE out/2026 R$ 63.609 (sem blindagem) + valor estimado da blindagem |
-| Óleo 5W30 + filtros | R$ 450 a cada 5.000 km | Uso severo |
-| Pneus + alinhamento | R$ 3.800 a cada 25.000 km | Jogo de 4, aro 17/18; vida mais curta pelo peso |
-| Freios | R$ 1.600 a cada 20.000 km | Pastilhas, discos e fluido |
-| Suspensão | R$ 3.900 a cada 40.000 km | Amortecedores, buchas, bieletas |
-| Fluido do câmbio automático | R$ 900 a cada 40.000 km | Troca completa |
-| Imprevistos e revisão geral | R$ 2.000 a cada 10.000 km | Carro de 14 anos |
-| Itens da blindagem | R$ 1.800 a cada 30.000 km | Vidros, borrachas, máquinas de vidro, dobradiças |
-| Seguro | R$ 400/mês | Estimativa: cote o seu |
-| IPVA + licenciamento | R$ 230/mês | 4% do valor FIPE (SP) ÷ 12 |
+| Item | Como é estimado |
+|---|---|
+| Valor do veículo | Tabela FIPE do modelo e ano escolhidos (ou valor típico do tipo, se cadastrado à mão) |
+| Depreciação | 10% a 15% do valor a cada 25 a 30 mil km, conforme o tipo |
+| Consumo | Média urbana típica do tipo (popular 11,5 km/L, SUV 8,5, moto 38…); etanol a 70% da gasolina |
+| Manutenção | Óleo, pneus, freios, suspensão e imprevistos com preço e intervalo típicos do tipo; câmbio automático e blindagem acrescentam itens |
+| Blindagem | Pneus, freios e suspensão duram ~20% menos e o consumo piora ~12% |
+| Seguro e IPVA | ~5% do valor/ano (×1,3 se blindado) e 4% do valor/ano (2% motos) + licenciamento |
+| Combustível | Média ANP em São Paulo; o usuário troca pelo preço do seu posto |
+| Taxa da plataforma | 0 (os apps mostram o valor líquido), exceto inDrive com 10% marcado como estimativa |
 
-- **Nenhuma taxa oficial da Lalamove está embutida**: a taxa da plataforma começa em 0.
 - Manutenção e depreciação entram como **reservas** (dinheiro a separar), não como gasto do dia.
-- Para não contar duas vezes, o peso extra da blindagem já está nos itens de pneus, freios e suspensão; o item da blindagem cobre só o que é dela.
-- Se você já usava o app, os novos exemplos substituem apenas os valores que ainda estavam marcados como estimativa. O que você editou ou confirmou é mantido.
-- Cada corrida do histórico guarda os preços e reservas da época. Mudar os Ajustes não reescreve o passado.
+- Cada corrida do histórico guarda os preços e reservas da época, o veículo e a plataforma. Mudar os Ajustes não reescreve o passado.
+- Quem já usava o app antes dos veículos e plataformas tem o carro e a taxa que estavam configurados convertidos no primeiro veículo e na primeira plataforma, sem perder nada.
 
 ## Estrutura
 
@@ -124,6 +118,10 @@ src/
   lib/cloud.ts            leitura/gravação no Supabase, diferenças e mesclagem
   lib/cloud.test.ts       testes da sincronização e da limpeza de dados
   lib/plan.ts             plano do usuário, regras do grátis, checkout
+  lib/vehicles.ts         tipos de veículo, valores padrão, garagem
+  lib/platforms.ts        catálogo de plataformas, taxas, plataforma em uso
+  lib/fipe.ts             consulta à tabela FIPE (marca, modelo, ano, valor)
+  legal.ts                Termos de uso e Política de privacidade (preencher dados)
   types.ts                tipos de dados
   defaults.ts             valores padrão (estimativas)
   lib/calc.ts             todos os cálculos (funções puras)
@@ -137,6 +135,11 @@ src/
     AccountScreen.tsx     conta, sair, excluir conta (LGPD)
     PlanScreen.tsx        Grátis × Pro, assinar e cancelar
     Pro.tsx               travas e selo do Pro
+    Onboarding.tsx        primeiro uso: plataformas → veículo → metas
+    VehicleForm.tsx       cadastro de veículo pela FIPE ou à mão
+    Garage.tsx            veículos e plataformas em Ajustes
+    LegalScreen.tsx       Termos e Privacidade
+    Turnstile.tsx         CAPTCHA (opcional)
     Calculator.tsx        tela principal (oferta, painel, conta da corrida)
     Verdict.tsx           cores e textos do semáforo
     Goals.tsx             metas

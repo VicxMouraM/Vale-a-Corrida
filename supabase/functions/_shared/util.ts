@@ -1,7 +1,12 @@
 // Código comum das Edge Functions (Deno).
 import { createClient, type SupabaseClient, type User } from 'npm:@supabase/supabase-js@2';
 
-export const PRECO_PRO = 49.99;
+/**
+ * Preço do Pro. O segredo PRECO_PRO permite um valor menor só para testar a cobrança real
+ * (mínimo do Asaas: R$ 5 no cartão, R$ 10 no Pix/boleto). Sem o segredo, vale R$ 49,99.
+ */
+const precoEnv = Number(Deno.env.get('PRECO_PRO'));
+export const PRECO_PRO = Number.isFinite(precoEnv) && precoEnv >= 5 && precoEnv <= 1000 ? precoEnv : 49.99;
 export const TOLERANCIA_DIAS = 3;
 
 /* ---------- CORS: só o endereço do app pode chamar ---------- */

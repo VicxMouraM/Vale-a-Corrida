@@ -2,7 +2,7 @@
 // Página: tenta a rede primeiro (pega atualizações) e cai no cache se estiver offline.
 // Arquivos estáticos (js, css, ícones, fontes): cache primeiro.
 // Nunca guarda respostas da API (Supabase): elas têm dados pessoais e precisam estar sempre atualizadas.
-const CACHE = 'vale-a-corrida-v2';
+const CACHE = 'vale-a-corrida-v3';
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', (e) => {
@@ -23,6 +23,9 @@ self.addEventListener('fetch', (e) => {
   if (!sameOrigin && !FONT_HOSTS.includes(url.hostname)) return;
   // Volta do login (Google/Apple/e-mail) traz um código na URL: sempre da rede
   if (req.mode === 'navigate' && url.searchParams.has('code')) return;
+  // Só a página do app vai para o cache como index.html; /termos/, /privacidade/ etc. seguem direto da rede
+  const raiz = new URL('./', self.location).pathname;
+  if (req.mode === 'navigate' && url.pathname !== raiz && url.pathname !== raiz + 'index.html') return;
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req)

@@ -20,7 +20,8 @@ function page(titulo: string, secoes: LegalSection[], outro: { href: string; nom
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'" />
 <title>${esc(titulo)} · ${esc(LEGAL.produto)}</title>
 <meta name="description" content="${esc(titulo)} do ${esc(LEGAL.produto)}." />
-<link rel="icon" type="image/png" href="../favicon.png" />
+<link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+<link rel="icon" type="image/png" sizes="64x64" href="../favicon.png" />
 <style>
   :root { color-scheme: light dark; --bg:#eff1f4; --card:#fff; --ink:#131921; --muted:#586270; --accent:#145c8a; --line:#d3d8e0; }
   @media (prefers-color-scheme: dark) { :root { --bg:#0d1116; --card:#151b23; --ink:#e6ebf1; --muted:#96a0ae; --accent:#62acde; --line:#2e3744; } }

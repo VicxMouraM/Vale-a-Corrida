@@ -2,7 +2,7 @@
 // Página: tenta a rede primeiro (pega atualizações) e cai no cache se estiver offline.
 // Arquivos estáticos (js, css, ícones, fontes): cache primeiro.
 // Nunca guarda respostas da API (Supabase): elas têm dados pessoais e precisam estar sempre atualizadas.
-const CACHE = 'vale-a-corrida-v3';
+const CACHE = 'vale-a-corrida-v4'; // v4: ícones novos da marca
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', (e) => {

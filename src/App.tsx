@@ -43,6 +43,7 @@ export default function App() {
 function Splash({ text, children }: { text: string; children?: ReactNode }) {
   return (
     <div className="gutter flex min-h-screen flex-col items-center justify-center gap-3 text-center">
+      <img src="./favicon.svg" alt="" width={64} height={72} className="h-[72px] w-16" />
       <div className="font-display text-3xl font-bold tracking-wide">
         Vale a <span className="text-accent">Corrida?</span>
       </div>
@@ -295,12 +296,15 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
   return (
     <div className={`min-h-screen sm:pb-10 ${configurando ? 'pb-6' : 'pb-[calc(76px+env(safe-area-inset-bottom,0px))]'}`}>
       <header className="sticky top-[env(safe-area-inset-top,0px)] z-20 border-b border-line bg-bg/90 backdrop-blur">
-        <div className="gutter mx-auto flex max-w-6xl items-center justify-between gap-4 py-3">
-          <div className="min-w-0">
-            <div className="font-display text-2xl font-bold leading-none tracking-wide">
-              Vale a <span className="text-accent">Corrida?</span>
+        <div className="gutter mx-auto flex max-w-6xl items-center justify-between gap-2 py-3 sm:gap-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <img src="./favicon.svg" alt="" width={32} height={36} className="h-8 w-7 shrink-0 min-[360px]:h-9 min-[360px]:w-8" />
+            <div className="min-w-0">
+              <div className="whitespace-nowrap font-display text-xl font-bold leading-none tracking-wide min-[360px]:text-2xl">
+                Vale a <span className="text-accent">Corrida?</span>
+              </div>
+              <div className="truncate text-xs text-muted">{settings.veiculos.length ? settings.veiculo.nome : 'Primeiros passos'}</div>
             </div>
-            <div className="truncate text-xs text-muted">{settings.veiculos.length ? settings.veiculo.nome : 'Primeiros passos'}</div>
           </div>
           <nav className={`hidden gap-1 ${configurando ? '' : 'sm:flex'}`} aria-label="Seções">
             {TABS.map((t) => (

@@ -339,7 +339,8 @@ const ESTILO = `
   .muted { color:var(--muted); font-size:15px; }
   .meta { color:var(--muted); font-size:15px; margin-bottom:18px; }
   a { color:var(--accent); font-weight:600; }
-  nav.topo { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; font-size:15px; }
+  nav.topo { display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:16px; font-size:15px; }
+  nav.topo .marca { display:inline-flex; align-items:center; gap:8px; color:var(--ink); text-decoration:none; font-size:17px; }
   .resumo, .exemplo, .dica, .sumario, .cta-box { border-radius:12px; padding:14px 16px; margin:0 0 18px; }
   .resumo { background:var(--resumo); border:1px solid var(--resumo-line); }
   .exemplo { background:var(--ex); border:1px solid var(--ex-line); }
@@ -368,19 +369,23 @@ function pagina(opts: { caminho: string; titulo: string; descricao: string; tipo
 <title>${opts.titulo} · ${LEGAL.produto}</title>
 <meta name="description" content="${opts.descricao}" />
 <link rel="canonical" href="${SITE}/${opts.caminho}" />
-<link rel="icon" type="image/png" href="../favicon.png" />
+<link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+<link rel="icon" type="image/png" sizes="64x64" href="../favicon.png" />
 <meta property="og:site_name" content="${LEGAL.produto}" />
 <meta property="og:locale" content="pt_BR" />
 <meta property="og:title" content="${opts.titulo}" />
 <meta property="og:description" content="${opts.descricao}" />
 <meta property="og:type" content="${opts.tipo}" />
 <meta property="og:url" content="${SITE}/${opts.caminho}" />
-<meta property="og:image" content="${SITE}/icon-512.png" />
+<meta property="og:image" content="${SITE}/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
 <style>${ESTILO}</style>
 </head>
 <body>
 <main>
-<nav class="topo"><a href="../">← Abrir o ${LEGAL.produto}</a><a href="../guias/">Todos os guias</a></nav>
+<nav class="topo"><a href="../" class="marca"><img src="../favicon.svg" alt="" width="28" height="32" />${LEGAL.produto}</a><a href="../guias/">Todos os guias</a></nav>
 ${opts.conteudo}
 <p class="muted" style="margin-top:24px"><a href="../termos/">Termos de uso</a> · <a href="../privacidade/">Privacidade</a></p>
 </main>

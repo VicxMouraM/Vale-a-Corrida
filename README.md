@@ -1,3 +1,5 @@
+<p align="center"><img src="brand/horizontal-claro.png" alt="Vale a Corrida?" width="480" /></p>
+
 # Vale a Corrida?
 
 Calculadora para motoristas e entregadores decidirem, antes de aceitar, se uma corrida ou entrega dá lucro de verdade, e acompanharem o lucro real ao longo do tempo. Funciona com Uber, 99, iFood, Lalamove, inDrive e outras, e com qualquer veículo: carro, moto ou utilitário, cadastrado pela tabela FIPE.
@@ -99,6 +101,22 @@ Use como motorista de verdade e anote aqui embaixo, com data, tudo que travar, c
 **Estimativa** (Claude Opus 5.5, US$ 4/US$ 20 por milhão de tokens, US$ 1 = R$ 5,70): ~R$ 0,09 a 0,10 por print. No pior caso, um assinante que usa os 100 prints custa ~R$ 9, cerca de 19% dos R$ 48 líquidos da assinatura. Na prática, quase ninguém usa tudo.
 
 **Medir o custo real:** cada leitura grava os tokens em `auditoria` (ação `ler_print_uso`); a consulta pronta está em [supabase/CONFIGURAR.md](supabase/CONFIGURAR.md) (seção 9). Revisar o limite depois de algumas semanas de uso. Para baratear ~40x, testar o Claude Haiku 5.5 com prints reais antes de trocar.
+
+## 🎨 Marca
+
+| Arquivo | Uso |
+|---|---|
+| [`brand/icone.svg`](brand/icone.svg) | Ícone do app (fonte de todos os PNGs) |
+| [`public/favicon.svg`](public/favicon.svg) | Símbolo com cantos arredondados: favicon, cabeçalho do app, guias |
+| [`brand/horizontal-claro.svg`](brand/horizontal-claro.svg) / `.png` | Logo com nome, para fundo claro |
+| [`brand/horizontal-escuro.svg`](brand/horizontal-escuro.svg) / `.png` | Logo com nome, para fundo escuro |
+| [`brand/simbolo-branco.svg`](brand/simbolo-branco.svg) | Símbolo de uma cor, para fotos e fundos coloridos |
+| `public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`, `favicon.png` | Ícones gerados (Android, iPhone, navegador) |
+| `public/og-image.png` | Imagem de compartilhamento (WhatsApp, Facebook, Google), 1200×630 |
+
+Cores: azul-petróleo `#145C8A` (principal) · verde `#167D3E` · âmbar `#A66800` · vermelho `#BE2626` · fundo `#EFF1F4`. Fonte: Barlow Condensed (títulos) e Barlow (texto).
+
+Para trocar o ícone: edite `brand/icone.svg` e `public/favicon.svg` e gere de novo os PNGs (os textos da logo precisam da fonte Barlow Condensed na hora de gerar). Ao trocar ícones, suba a versão do cache em `public/sw.js` para os celulares buscarem os novos.
 
 ## Como executar
 

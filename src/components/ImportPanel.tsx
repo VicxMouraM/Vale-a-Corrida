@@ -1,5 +1,5 @@
 import { unzipSync } from 'fflate';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { brl, hm, num } from '../lib/format';
 import {
   corridasDeRascunhos,
@@ -440,6 +440,19 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
   const [aviso, setAviso] = useState<string | null>(null);
   const [restantes, setRestantes] = useState<number | null>(null);
   const [linhas, setLinhas] = useState<Rascunho[] | null>(null);
+  // A leitura por IA só funciona quando o servidor tem a chave configurada
+  const [disponivel, setDisponivel] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!auth.user || !supabase) return;
+    let vivo = true;
+    supabase.functions
+      .invoke('ler-print', { method: 'GET' })
+      .then(({ data }) => vivo && setDisponivel(!!(data as { disponivel?: boolean } | null)?.disponivel))
+      .catch(() => vivo && setDisponivel(false));
+    return () => {
+      vivo = false;
+    };
+  }, [auth.user]);
 
   const pronto = useMemo(() => (linhas ? corridasDeRascunhos(linhas, s, plataforma, existentes) : null), [linhas, s, plataforma, existentes]);
   const incompletas = linhas ? linhas.filter((l) => l.incluir && faltaNoRascunho(l).length > 0).length : 0;
@@ -449,6 +462,16 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
       <p className="rounded-md bg-warn-soft px-3 py-2 text-sm">
         Para ler prints, entre na sua conta (a leitura é feita no servidor). Sem conta, use a aba Planilha.
       </p>
+    );
+  }
+
+  if (disponivel === null) return <p className="text-sm text-muted">Verificando…</p>;
+  if (!disponivel) {
+    return (
+      <div className="rounded-md bg-sunk px-3 py-3 text-sm">
+        <strong>📸 Em breve:</strong> importar corridas mandando prints da tela. Enquanto isso, use a aba <strong>Planilha</strong> (se a plataforma oferecer) ou registre
+        cada corrida pela <strong>⚡ Oferta rápida</strong> ao aceitar.
+      </div>
     );
   }
 

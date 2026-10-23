@@ -11,6 +11,22 @@ React 18 + TypeScript + Tailwind CSS + Vite + Supabase.
 
 Para ativar contas e pagamentos, siga [supabase/CONFIGURAR.md](supabase/CONFIGURAR.md).
 
+## ⏳ Pendências (lembretes)
+
+Coisas que dependem de você, fora do código. Marque com `x` quando fizer.
+
+- [ ] **Ligar a importação por print (leitura por IA).** O código está pronto e publicado; hoje o app mostra "Em breve" nessa aba.
+  1. Em [console.anthropic.com](https://console.anthropic.com), coloque créditos em **Billing** e defina um **limite de gasto mensal** (ex.: US$ 20).
+  2. Em **API Keys**, crie uma chave. Não cole em chat nem em arquivo do projeto.
+  3. No terminal do VS Code: `npx supabase secrets set ANTHROPIC_API_KEY='sk-ant-...' --project-ref fdwwukyyzlnuwtahrwnn`
+  4. Pronto: a aba "📸 Prints da tela" liga sozinha (não precisa publicar de novo). Teste em **Histórico → Importar**.
+  5. Custo estimado: US$ 0,01 a 0,03 por print. Acompanhe em console.anthropic.com → Usage.
+- [ ] **AdSense: depois da aprovação**, criar um bloco **Display** e a variável `VITE_ADSENSE_SLOT` no GitHub (Settings → Secrets and variables → Actions → Variables). Não ligar "Anúncios automáticos".
+- [ ] **GitHub: pedir a limpeza do cache** dos commits antigos com dados pessoais em [support.github.com/request](https://support.github.com/request) (*Remove sensitive data / cached views*), citando os commits `24c1b90` e `e0f433f`.
+- [ ] **Search Console:** enviar `https://valeacorrida.app.br/sitemap.xml` e pedir indexação das páginas principais e dos guias.
+- [ ] **Supabase Pro (quando houver assinantes):** backups diários, sem pausa por inatividade e domínio próprio no login com Google. Avaliar criar o projeto já na região São Paulo.
+- [ ] **App Android com leitura automática das ofertas** (futuro): avaliar depois de ter usuários pagando.
+
 ## Como executar
 
 Pré-requisito: Node.js 18 ou mais novo.

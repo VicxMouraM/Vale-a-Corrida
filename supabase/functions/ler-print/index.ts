@@ -40,11 +40,16 @@ Regras:
 - Ignore totais da semana, saldos, promoções, gráficos e anúncios: só corridas individuais.
 - Se os prints não forem de histórico de corridas, devolva a lista vazia e explique em "aviso".`;
 
-const anthropic = new Anthropic(); // lê ANTHROPIC_API_KEY do ambiente
+// A leitura só liga quando a chave existir; até lá o app mostra "Em breve" (sem gastar o limite de ninguém)
+const DISPONIVEL = !!Deno.env.get('ANTHROPIC_API_KEY');
+const anthropic = DISPONIVEL ? new Anthropic() : null; // lê ANTHROPIC_API_KEY do ambiente
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors(req) });
+  // GET: o app pergunta se a leitura de prints já está ligada
+  if (req.method === 'GET') return json(req, { disponivel: DISPONIVEL });
   if (req.method !== 'POST') return json(req, { error: 'Método não permitido' }, 405);
+  if (!anthropic) return json(req, { error: 'A leitura de prints ainda não está disponível. Use a planilha por enquanto.' }, 503);
 
   const user = await userFrom(req);
   if (!user) return json(req, { error: 'Entre na sua conta para importar por print.' }, 401);

@@ -98,12 +98,14 @@ export function useAppData(uid: string | null) {
         await pushSettings(sb, uid!, d.settings, d.offer);
         settingsSynced.current = ver;
       }
-      await pushRides(sb, uid!, { upserts, deletes });
-      // Só tira da fila o que não mudou de novo enquanto enviava
+      const recusadas = await pushRides(sb, uid!, { upserts, deletes });
+      // Só tira da fila o que não mudou de novo enquanto enviava.
+      // Corridas recusadas pelo banco também saem (repetir não adianta); ficam no aparelho até serem corrigidas.
       const now = new Map((latest.current?.history ?? []).map((e) => [e.id, e]));
       for (const e of upserts) if (now.get(e.id) === e) pendingUp.current.delete(e.id);
       for (const id of deletes) if (!now.has(id)) pendingDel.current.delete(id);
-      setStatus('synced');
+      if (recusadas.length) console.warn('Corridas recusadas pelo servidor', recusadas);
+      setStatus(recusadas.length ? 'error' : 'synced');
     } catch (e) {
       setStatus(isNetworkError(e) ? 'offline' : 'error');
     } finally {

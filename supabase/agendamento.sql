@@ -1,6 +1,7 @@
 -- Agenda a rotina diária de cancelamento automático (todo dia às 9h de Brasília = 12h UTC).
 -- Rode UMA VEZ no SQL Editor, depois de publicar a função `rotina-assinaturas`.
--- Troque os dois valores marcados abaixo. Eles ficam guardados no Vault (criptografados), não neste arquivo.
+-- Troque os dois valores marcados abaixo DIRETO NO SQL EDITOR do Supabase. Eles ficam guardados no Vault (criptografados).
+-- ⚠ NÃO salve este arquivo com o segredo preenchido: o repositório é público e o segredo vazaria no GitHub.
 
 create extension if not exists pg_cron;
 create extension if not exists pg_net;

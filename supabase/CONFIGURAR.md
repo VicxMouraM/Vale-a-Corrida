@@ -161,7 +161,9 @@ No **SQL Editor**, rode **antes de publicar a nova versão do app**:
 ## 8. Segurança, antifraude, cancelamento automático e anúncios
 
 ### 8.1 Banco
-No **SQL Editor**, rode [`migrations/0007_antifraude_anuncios.sql`](migrations/0007_antifraude_anuncios.sql).
+No **SQL Editor**, rode [`migrations/0007_antifraude_anuncios.sql`](migrations/0007_antifraude_anuncios.sql) e depois [`migrations/0008_limites_abuso.sql`](migrations/0008_limites_abuso.sql).
+
+> Segredos (chaves do Asaas, `HASH_PEPPER`, `CRON_SECRET`, token do webhook) **nunca** entram em arquivos do projeto: o repositório é público. Eles ficam só nos `secrets` do Supabase, no Vault e no seu gerenciador de senhas.
 
 ### 8.2 Segredos novos e funções
 ```bash

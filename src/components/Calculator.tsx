@@ -16,7 +16,7 @@ interface Props {
   settings: Settings;
   setSettings: (s: Settings) => void;
   onRegister: (a: Analysis) => void;
-  onOpenSettings: () => void;
+  onOpenSettings: (secao?: string) => void;
   today: { qtd: number; lucro: number };
 }
 
@@ -93,7 +93,7 @@ export function Calculator({ offer, setOffer, settings: s, setSettings, onRegist
               <p className="tnum text-xs text-muted">
                 {fuel === 'etanol' ? 'Etanol' : 'Gasolina'} a {brl(fp.preco)}/L · {num(fp.kml, 1)} km/L
                 {offer.combustivel === 'auto' && cmp.valido ? ' (o mais barato hoje)' : ''} ·{' '}
-                <button className="font-semibold text-accent" onClick={onOpenSettings}>
+                <button className="font-semibold text-accent" onClick={() => onOpenSettings()}>
                   alterar preços
                 </button>
               </p>
@@ -233,7 +233,7 @@ function Num({ label, value, tone = '' }: { label: string; value: string; tone?:
 }
 
 /* Extrato da corrida: cada linha traz a própria fórmula. */
-function Statement({ a, s, offer, onOpenSettings }: { a: Analysis; s: Settings; offer: Offer; onOpenSettings: () => void }) {
+function Statement({ a, s, offer, onOpenSettings }: { a: Analysis; s: Settings; offer: Offer; onOpenSettings: (secao?: string) => void }) {
   const incluiFixo = s.criterios.incluirFixosNaDecisao;
   const pend = pendingEstimates(s);
   const p = s.plataforma.taxaPercentual;
@@ -302,7 +302,7 @@ function Statement({ a, s, offer, onOpenSettings }: { a: Analysis; s: Settings; 
       {pend.length > 0 && (
         <p className="mt-3 text-xs text-muted">
           <span className="font-semibold text-warn">Ainda são estimativas:</span> {pend.join(', ')}.{' '}
-          <button className="font-semibold text-accent" onClick={onOpenSettings}>
+          <button className="font-semibold text-accent" onClick={() => onOpenSettings()}>
             Revisar em Ajustes
           </button>
         </p>
@@ -375,7 +375,7 @@ function MinFormulas({ a, s, offer }: { a: Analysis; s: Settings; offer: Offer }
 }
 
 /** Veículo e plataforma em uso, com troca rápida para quem tem mais de um. */
-function WorkBar({ s, setSettings, onOpenSettings }: { s: Settings; setSettings: (s: Settings) => void; onOpenSettings: () => void }) {
+function WorkBar({ s, setSettings, onOpenSettings }: { s: Settings; setSettings: (s: Settings) => void; onOpenSettings: (secao?: string) => void }) {
   const { plan } = usePlan();
   const vs = garage(s);
   const ps = platforms(s);
@@ -391,7 +391,7 @@ function WorkBar({ s, setSettings, onOpenSettings }: { s: Settings; setSettings:
           ))}
         </select>
       ) : (
-        <button onClick={onOpenSettings} className={`${pick} text-left`} title="Veículo em uso">
+        <button onClick={() => onOpenSettings('aj-veiculos')} className={`${pick} text-left`} title="Veículo em uso">
           {s.veiculo.nome}
         </button>
       )}
@@ -404,7 +404,7 @@ function WorkBar({ s, setSettings, onOpenSettings }: { s: Settings; setSettings:
           ))}
         </select>
       ) : (
-        <button onClick={onOpenSettings} className={`${pick} text-left`} title="Plataforma em uso">
+        <button onClick={() => onOpenSettings('aj-plataforma')} className={`${pick} text-left`} title="Plataforma em uso">
           {activePlatform(s)?.nome ?? 'Plataforma'}
         </button>
       )}

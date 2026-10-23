@@ -16,6 +16,7 @@ interface AuthState {
   signUp: (email: string, password: string, nome: string, captchaToken?: string) => Promise<'confirm-email' | 'signed-in'>;
   signInGoogle: () => Promise<void>;
   sendPasswordReset: (email: string, captchaToken?: string) => Promise<void>;
+  resendConfirmation: (email: string, captchaToken?: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   signOut: (everywhere?: boolean) => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -89,6 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         /* sem sessionStorage */
       }
       const { error } = await need().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectUrl() } });
+      if (error) throw error;
+    },
+    async resendConfirmation(email, captchaToken) {
+      const { error } = await need().auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: redirectUrl(), captchaToken } });
       if (error) throw error;
     },
     async sendPasswordReset(email, captchaToken) {

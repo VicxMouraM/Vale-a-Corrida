@@ -184,9 +184,10 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
     return { qtd: t.qtd, lucro: t.lucro };
   }, [visible]);
 
-  function openSettings() {
+  function openSettings(secao = 'aj-combustivel') {
+    closeOverlay();
     setTab('ajustes');
-    setTimeout(() => document.getElementById('aj-combustivel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    setTimeout(() => document.getElementById(secao)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
   }
 
   function goTab(t: Tab) {
@@ -239,7 +240,7 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
               </button>
             ))}
           </nav>
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {statusText && <span className={`hidden text-xs sm:inline ${statusBad ? 'text-bad' : 'text-warn'}`}>{statusText}</span>}
             {showPlan && (
               <button
@@ -247,13 +248,24 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
                 onClick={onPlan}
                 className={`rounded-full px-2.5 py-1 text-xs font-bold ${plan.pro ? 'bg-accent text-accent-ink' : 'border border-accent/50 text-accent hover:bg-sunk'}`}
               >
-                {plan.pro ? planBadge(plan) : 'Seja Pro'}
+                {plan.pro ? (
+                  <>
+                    <span className="sm:hidden">{planBadge(plan).replace('Teste Pro · ', 'Teste · ').replace(/ dias?$/, 'd')}</span>
+                    <span className="hidden sm:inline">{planBadge(plan)}</span>
+                  </>
+                ) : (
+                  'Seja Pro'
+                )}
               </button>
             )}
             {accountLabel && (
-              <button onClick={onAccount} className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-semibold hover:bg-sunk">
+              <button
+                onClick={onAccount}
+                aria-label={accountLabel}
+                className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold hover:bg-sunk sm:px-3"
+              >
                 <Icon d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0" />
-                {accountLabel}
+                <span className="hidden sm:inline">{accountLabel}</span>
               </button>
             )}
           </div>

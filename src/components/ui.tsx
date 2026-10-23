@@ -95,6 +95,7 @@ export function TextField(props: {
   autoComplete?: string;
   placeholder?: string;
   inputMode?: 'text' | 'numeric' | 'tel' | 'email';
+  maxLength?: number;
 }) {
   const auto = useId();
   const id = props.id ?? auto;
@@ -109,6 +110,7 @@ export function TextField(props: {
         autoComplete={props.autoComplete}
         placeholder={props.placeholder}
         inputMode={props.inputMode}
+        maxLength={props.maxLength}
         className="w-full min-w-0 rounded-md border border-line bg-surface px-3 py-2 outline-none focus:border-accent"
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}

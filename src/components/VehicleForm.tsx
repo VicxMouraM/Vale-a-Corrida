@@ -9,9 +9,10 @@ interface Props {
   onSave: (v: VehicleProfile) => void;
   onCancel?: () => void;
   saveLabel?: string;
+  cancelLabel?: string;
 }
 
-export function VehicleForm({ onSave, onCancel, saveLabel = 'Salvar veículo' }: Props) {
+export function VehicleForm({ onSave, onCancel, saveLabel = 'Salvar veículo', cancelLabel = 'Cancelar' }: Props) {
   const [tipo, setTipo] = useState<VehicleType | null>(null);
   const [modo, setModo] = useState<'fipe' | 'manual'>('fipe');
   const [nome, setNome] = useState('');
@@ -137,7 +138,7 @@ export function VehicleForm({ onSave, onCancel, saveLabel = 'Salvar veículo' }:
             <Btn kind="primary" disabled={!pronto} onClick={save}>
               {saveLabel}
             </Btn>
-            {onCancel && <Btn onClick={onCancel}>Cancelar</Btn>}
+            {onCancel && <Btn onClick={onCancel}>{cancelLabel}</Btn>}
           </div>
         </>
       )}

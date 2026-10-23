@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { brl } from '../lib/format';
+import { brl, maskCpfCnpj } from '../lib/format';
 import { cancelSubscription, cpfCnpjValido, daysLeft, DIAS_HISTORICO_GRATIS, PRECO_PRO, startCheckout, type Plan } from '../lib/plan';
 import { ProTag } from './Pro';
 import { Btn, Card, Segmented, TextField } from './ui';
@@ -158,7 +158,7 @@ export function PlanScreen({ plan, loggedIn, onLogin, onBack, refresh }: Props) 
                     : 'Todo mês chega um boleto. Libera em até 3 dias úteis após o pagamento.'}
               </span>
             </div>
-            <TextField label="CPF ou CNPJ (exigido para a cobrança)" value={cpf} onChange={setCpf} inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" />
+            <TextField label="CPF ou CNPJ (exigido para a cobrança)" value={cpf} onChange={(v) => setCpf(maskCpfCnpj(v))} inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" maxLength={18} />
             <p className="-mt-1 text-xs text-muted">O CPF vai só para o Asaas, que emite a cobrança. Não guardamos no app.</p>
             {error && (
               <p role="alert" className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">

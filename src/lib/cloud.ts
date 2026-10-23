@@ -190,14 +190,29 @@ export async function pushSettings(sb: SupabaseClient, uid: string, settings: Se
   if (error) throw error;
 }
 
-export async function pushRides(sb: SupabaseClient, uid: string, ops: RideOps) {
+/** Erros em que o banco recusou os DADOS (não a conexão): repetir o mesmo envio nunca vai funcionar. */
+const DADO_RECUSADO = ['23514', '22P02', '22003', '23502', '22007', '22008'];
+
+/**
+ * Envia as corridas. Se um lote for recusado por causa de uma corrida com dado inválido,
+ * reenvia uma a uma para que só ela fique de fora. Devolve os ids recusados.
+ */
+export async function pushRides(sb: SupabaseClient, uid: string, ops: RideOps): Promise<string[]> {
+  const recusadas: string[] = [];
   for (let i = 0; i < ops.upserts.length; i += BATCH) {
-    const rows = ops.upserts.slice(i, i + BATCH).map((e) => ({ ...toRow(e), user_id: uid }));
-    const { error } = await sb.from('rides').upsert(rows);
-    if (error) throw error;
+    const lote = ops.upserts.slice(i, i + BATCH);
+    const { error } = await sb.from('rides').upsert(lote.map((e) => ({ ...toRow(e), user_id: uid })));
+    if (!error) continue;
+    if (!DADO_RECUSADO.includes(error.code)) throw error;
+    for (const e of lote) {
+      const r = await sb.from('rides').upsert({ ...toRow(e), user_id: uid });
+      if (r.error && DADO_RECUSADO.includes(r.error.code)) recusadas.push(e.id);
+      else if (r.error) throw r.error;
+    }
   }
   for (let i = 0; i < ops.deletes.length; i += BATCH) {
     const { error } = await sb.from('rides').delete().eq('user_id', uid).in('id', ops.deletes.slice(i, i + BATCH));
     if (error) throw error;
   }
+  return recusadas;
 }

@@ -74,6 +74,14 @@ export function History({ s, history, setHistory, draft, setDraft, hiddenCount =
       setMsg('Preencha valor recebido, km e tempo (maiores que zero).');
       return;
     }
+    if (i.valor > 9999 || i.bonus > 9999 || i.despesas > 9999 || i.taxas > 9999) {
+      setMsg('Confira os valores: algum passou de R$ 9.999 numa única corrida.');
+      return;
+    }
+    if (i.km > 2000 || i.minutos > 1440) {
+      setMsg('Confira km e tempo: uma corrida vai até 2.000 km e 24 horas (1.440 min).');
+      return;
+    }
     // Recalcula com os custos do veículo em que a corrida foi feita (pode não ser o que está em uso agora)
     const sv = i.veiculo && i.veiculo !== s.veiculoAtivo && s.veiculos.some((v) => v.id === i.veiculo) ? activateVehicle(s, i.veiculo) : s;
     const entry = buildEntry(i, sv, draft.editingId);

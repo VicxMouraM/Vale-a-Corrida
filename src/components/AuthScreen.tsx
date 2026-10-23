@@ -146,6 +146,24 @@ export function AuthScreen({ onClose, onLegal }: { onClose: () => void; onLegal:
           {error && (
             <p role="alert" className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">
               {error}
+              {error.startsWith('Confirme o seu e-mail') && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    className="font-semibold underline"
+                    disabled={busy || !captchaOk}
+                    onClick={() =>
+                      run(async () => {
+                        await auth.resendConfirmation(email, token);
+                        setInfo(`Enviamos um novo link para ${email.trim()}. Confira também o spam.`);
+                      })
+                    }
+                  >
+                    Reenviar e-mail
+                  </button>
+                </>
+              )}
             </p>
           )}
           {info && (

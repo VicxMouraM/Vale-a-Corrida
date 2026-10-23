@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HistoryEntry } from '../types';
-import { applyOps, diffHistory, fromRow, mergeHistories, toRow } from './cloud';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { applyOps, diffHistory, fromRow, mergeHistories, pushRides, toRow } from './cloud';
 import { cleanHistory } from './storage';
 
 function entry(id: string, over: Partial<HistoryEntry> = {}): HistoryEntry {
@@ -98,5 +99,35 @@ describe('cleanHistory', () => {
   });
   it('não é lista: vazio', () => {
     expect(cleanHistory({})).toEqual([]);
+  });
+});
+
+describe('pushRides', () => {
+  /** Supabase falso: recusa (23514) qualquer envio que contenha a corrida 'ruim'. */
+  function fakeDb(codigo = '23514') {
+    const enviados: string[][] = [];
+    const db = {
+      from: () => ({
+        upsert: async (rows: { id: string } | { id: string }[]) => {
+          const lista = Array.isArray(rows) ? rows : [rows];
+          enviados.push(lista.map((r) => r.id));
+          return { error: lista.some((r) => r.id === 'ruim') ? { code: codigo, message: 'check' } : null };
+        },
+        delete: () => ({ eq: () => ({ in: async () => ({ error: null }) }) }),
+      }),
+    };
+    return { db: db as unknown as SupabaseClient, enviados };
+  }
+
+  it('uma corrida inválida não trava as outras', async () => {
+    const { db, enviados } = fakeDb();
+    const recusadas = await pushRides(db, 'u', { upserts: [entry('a'), entry('ruim'), entry('b')], deletes: [] });
+    expect(recusadas).toEqual(['ruim']);
+    expect(enviados.flat().filter((id) => id !== 'ruim')).toContain('b'); // reenviada sozinha
+  });
+
+  it('erro de conexão continua sendo erro (tenta de novo depois)', async () => {
+    const { db } = fakeDb('08006');
+    await expect(pushRides(db, 'u', { upserts: [entry('ruim')], deletes: [] })).rejects.toBeTruthy();
   });
 });

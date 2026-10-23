@@ -130,6 +130,7 @@ export function Onboarding({ s, setSettings }: { s: Settings; setSettings: (s: S
           <p className="mb-3 text-sm text-muted">Com marca, modelo e ano, o app já preenche valor, consumo e manutenção típicos.</p>
           <VehicleForm
             saveLabel="Continuar"
+            cancelLabel="Voltar"
             onSave={(v) => {
               setVeiculo(v);
               setPasso(2);

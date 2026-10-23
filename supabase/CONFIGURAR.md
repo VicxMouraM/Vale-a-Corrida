@@ -157,3 +157,75 @@ No **SQL Editor**, rode **antes de publicar a nova versão do app**:
    ```bash
    npx supabase secrets set APP_ORIGINS=https://seudominio.com.br,https://SEU-USUARIO.github.io
    ```
+
+## 8. Segurança, antifraude, cancelamento automático e anúncios
+
+### 8.1 Banco
+No **SQL Editor**, rode [`migrations/0007_antifraude_anuncios.sql`](migrations/0007_antifraude_anuncios.sql).
+
+### 8.2 Segredos novos e funções
+```bash
+# Segredos longos e aleatórios (gere cada um com o comando abaixo e guarde num gerenciador de senhas)
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+npx supabase secrets set HASH_PEPPER=<64 caracteres>     # nunca mude depois: os bloqueios por CPF dependem dele
+npx supabase secrets set CRON_SECRET=<64 caracteres>
+
+npx supabase functions deploy assinar
+npx supabase functions deploy cancelar
+npx supabase functions deploy excluir-conta
+npx supabase functions deploy asaas-webhook --no-verify-jwt
+npx supabase functions deploy rotina-assinaturas --no-verify-jwt
+```
+> O `ASAAS_WEBHOOK_TOKEN` agora precisa ter **pelo menos 32 caracteres**. Se o seu for menor, gere um novo, atualize o segredo e o webhook no Asaas.
+
+No webhook do Asaas, inclua também o evento **`PAYMENT_CHARGEBACK_DISPUTE`**.
+
+### 8.3 Cancelamento automático (todo dia às 9h)
+Abra [`agendamento.sql`](agendamento.sql), troque a URL do projeto e o `CRON_SECRET` e rode **uma vez** no SQL Editor.
+Para conferir: `select * from cron.job_run_details order by start_time desc limit 5;`
+
+### 8.4 Configurações de segurança do Supabase (painel)
+- **Authentication → Sessions**: *Detect and revoke potentially compromised refresh tokens* ligado; *Refresh token reuse interval* 10 s.
+- **Authentication → Providers → Email**: *Secure password change* ligado (pede login recente para trocar a senha).
+- **Authentication → Rate Limits**: mantenha os padrões ou reduza (ex.: 30 logins por 5 min por IP).
+- **Project Settings → API**: nunca exponha a chave `service_role` / `secret`.
+- **Database → Backups**: confira se os backups diários estão ativos.
+
+### 8.5 Anúncios
+**Anúncios próprios (padrão, seguro):** em **Table Editor → anuncios → Insert row**:
+
+| Campo | Exemplo |
+|---|---|
+| anunciante | Auto Center Silva |
+| titulo | Troca de óleo com 15% para motoristas |
+| texto | Mostre o app no balcão. Av. Exemplo, 123 |
+| imagem_url | `https://…/logo.png` (opcional, só https) |
+| link_url | `https://wa.me/5511…` ou site (só https) |
+| chamada | Chamar no WhatsApp |
+| fim | data de término do contrato (vazio = sem fim) |
+| peso | 1 a 100: quanto maior, mais vezes aparece |
+
+Aparecem só para quem não é Pro, na calculadora e no histórico, com a etiqueta "Anúncio" e o link "Remover anúncios com o Pro". Desligar: `ativo = false`.
+
+**Google AdSense (opcional):** exige domínio próprio e aprovação do Google. No GitHub (Variables): `VITE_ADS=adsense`, `VITE_ADSENSE_CLIENT=ca-pub-…`, `VITE_ADSENSE_SLOT=…`.
+> Atenção: o AdSense roda um script do Google dentro do app, e a política de segurança (CSP) é afrouxada para ele. Os anúncios próprios não têm esse custo.
+
+### O que está protegido
+
+| Golpe ou risco | Proteção |
+|---|---|
+| Ver ou alterar dados de outra pessoa | RLS em todas as tabelas; cada conta só alcança as próprias linhas |
+| Se dar Pro de graça | Plano gravado só pelo servidor; limites checados no banco |
+| Teste grátis infinito | 1 por pessoa: Gmail com pontos e +apelido contam como o mesmo e-mail; e-mail descartável não ganha teste |
+| Chargeback ou estornos repetidos | Pro cortado na hora, assinatura cancelada, conta + CPF + e-mail bloqueados |
+| Gerar cobranças em massa ou testar cartões | Máximo de 5 tentativas de assinatura por hora e 10 por dia; e-mail confirmado obrigatório |
+| Webhook falso | Token secreto (≥ 32 caracteres) comparado em tempo constante; cliente e valor conferidos |
+| Cobrança após excluir a conta | Exclusão cancela a assinatura no Asaas antes de apagar |
+| Cobranças acumulando sem pagamento | Cancelamento automático depois de 7 dias de atraso ou de cobrança nunca paga |
+| Senha fraca ou vazada, robôs | Mínimo de 8 caracteres com letras e números; CAPTCHA; limites do Supabase |
+| Celular roubado | "Sair de todos os aparelhos"; os dados da conta saem do aparelho ao sair |
+| Site falso embutindo o app (clickjacking) | O app se recusa a abrir dentro de iframe |
+| Injeção de script (XSS) | CSP restrita; o React escapa textos; links de anúncio só https e sem truque de usuário@ |
+| Phishing em nome do app | Avisos no app e nos Termos: nunca pedimos senha, código ou cartão |
+| CPF guardado | Não fica no banco; só um hash com segredo para bloqueios |

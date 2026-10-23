@@ -203,6 +203,8 @@ export function Btn(props: {
   type?: 'button' | 'submit';
   className?: string;
   disabled?: boolean;
+  /** marca o botão para o tutorial (data-tour) */
+  tour?: string;
 }) {
   const k = props.kind ?? 'ghost';
   const cls =
@@ -216,6 +218,7 @@ export function Btn(props: {
       type={props.type ?? 'button'}
       onClick={props.onClick}
       disabled={props.disabled}
+      data-tour={props.tour}
       className={`rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-40 ${cls} ${props.className ?? ''}`}
     >
       {props.children}

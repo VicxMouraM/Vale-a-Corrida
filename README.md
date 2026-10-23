@@ -108,7 +108,10 @@ supabase/
   migrations/0002_planos.sql  assinaturas, teste grátis, limite de 30 dias no grátis
   functions/assinar         cria a assinatura no Asaas e devolve o link de pagamento
   functions/cancelar        cancela a assinatura
-  functions/asaas-webhook   recebe os pagamentos e libera/bloqueia o Pro
+  functions/asaas-webhook   recebe os pagamentos e libera/bloqueia o Pro (estorno, chargeback)
+  functions/excluir-conta   cancela a assinatura no Asaas e apaga a conta
+  functions/rotina-assinaturas  cancelamento automático diário (agendamento.sql)
+  migrations/0007_…         antifraude, bloqueios, auditoria, anúncios próprios
   CONFIGURAR.md             passo a passo do Supabase
 src/
   App.tsx                 login/convidado, navegação, barra inferior no celular
@@ -121,6 +124,7 @@ src/
   lib/vehicles.ts         tipos de veículo, valores padrão, garagem
   lib/platforms.ts        catálogo de plataformas, taxas, plataforma em uso
   lib/fipe.ts             consulta à tabela FIPE (marca, modelo, ano, valor)
+  lib/ads.ts              anúncios próprios ou AdSense
   legal.ts                Termos de uso e Política de privacidade (preencher dados)
   types.ts                tipos de dados
   defaults.ts             valores padrão (estimativas)
@@ -140,6 +144,8 @@ src/
     Garage.tsx            veículos e plataformas em Ajustes
     LegalScreen.tsx       Termos e Privacidade
     Turnstile.tsx         CAPTCHA (opcional)
+    Tour.tsx              tutorial do primeiro acesso
+    AdSlot.tsx            anúncios (some no Pro)
     Calculator.tsx        tela principal (oferta, painel, conta da corrida)
     Verdict.tsx           cores e textos do semáforo
     Goals.tsx             metas

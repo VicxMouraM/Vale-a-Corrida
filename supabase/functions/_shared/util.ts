@@ -9,7 +9,8 @@ const ORIGENS = (Deno.env.get('APP_ORIGINS') ?? '').split(',').map((s) => s.trim
 
 export function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
-  const ok = ORIGENS.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin);
+  // localhost só quando ALLOW_LOCALHOST=1 (desenvolvimento); em produção, só os endereços do app
+  const ok = ORIGENS.includes(origin) || (Deno.env.get('ALLOW_LOCALHOST') === '1' && /^http:\/\/localhost:\d+$/.test(origin));
   return {
     'Access-Control-Allow-Origin': ok ? origin : (ORIGENS[0] ?? 'null'),
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -93,4 +94,45 @@ export function igual(a: string, b: string): boolean {
   let diff = ea.length ^ eb.length;
   for (let i = 0; i < Math.max(ea.length, eb.length); i++) diff |= (ea[i] ?? 0) ^ (eb[i] ?? 0);
   return diff === 0;
+}
+
+/* ---------- Segurança e antifraude ---------- */
+
+/**
+ * HMAC-SHA256 com um segredo do servidor (HASH_PEPPER). Usado para guardar CPF e e-mail bloqueados
+ * sem guardar o dado: um hash simples de CPF seria revertido por força bruta (só ~1 bilhão de CPFs).
+ */
+export async function hmac(valor: string): Promise<string> {
+  const pepper = Deno.env.get('HASH_PEPPER');
+  if (!pepper || pepper.length < 32) throw new Error('HASH_PEPPER ausente ou curto');
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pepper), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(valor));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export const cpfHash = (cpfCnpj: string) => hmac(`cpf:${cpfCnpj.replace(/\D/g, '')}`);
+
+/** Registra uma ação sensível. Nunca derruba a operação principal se falhar. */
+export async function audit(db: SupabaseClient, userId: string | null, acao: string, detalhes: Record<string, unknown> = {}) {
+  const { error } = await db.from('auditoria').insert({ user_id: userId, acao, detalhes });
+  if (error) console.error('auditoria', acao, error);
+}
+
+/** Quantas vezes o usuário fez `acao` na última janela. Para limitar abusos (ex.: gerar cobranças em massa). */
+export async function countRecent(db: SupabaseClient, userId: string, acao: string, minutos: number): Promise<number> {
+  const desde = new Date(Date.now() - minutos * 60_000).toISOString();
+  const { count, error } = await db.from('auditoria').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('acao', acao).gte('criado_em', desde);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function isBlocked(db: SupabaseClient, tipo: 'cpf' | 'email', hash: string): Promise<boolean> {
+  const { data } = await db.from('bloqueios').select('hash').eq('tipo', tipo).eq('hash', hash).maybeSingle();
+  return !!data;
+}
+
+/** Hash do e-mail igual ao do banco (public.email_hash): normaliza Gmail (pontos) e +apelidos. */
+export async function emailHashDb(db: SupabaseClient, email: string): Promise<string | null> {
+  const { data, error } = await db.rpc('email_hash', { email });
+  return error ? null : (data as string);
 }

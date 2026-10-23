@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { authErrorMessage, useAuth } from '../auth/AuthProvider';
+import { authErrorMessage, passwordProblem, useAuth } from '../auth/AuthProvider';
 import type { SyncStatus } from '../lib/useAppData';
 import { Btn, Card, TextField } from './ui';
 
@@ -28,17 +28,43 @@ export function AccountScreen({ status, hasPending, forgetDevice, onBack }: Prop
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [senha, setSenha] = useState('');
+  const [senha2, setSenha2] = useState('');
+  const [senhaMsg, setSenhaMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const nome = (user.user_metadata?.nome || user.user_metadata?.full_name || user.user_metadata?.name) as string | undefined;
   const ident = user.email || 'Conta';
   const provider = (user.app_metadata?.provider as string | undefined) ?? 'email';
   const providerLabel: Record<string, string> = { email: 'e-mail e senha', google: 'Google' };
 
-  async function signOut() {
+  async function signOut(everywhere = false) {
     if (hasPending() && !confirmOut) return setConfirmOut(true);
     setBusy(true);
     forgetDevice();
-    await auth.signOut();
+    try {
+      await auth.signOut(everywhere);
+    } catch {
+      setBusy(false);
+      setError('Não foi possível sair de todos os aparelhos agora. Verifique a internet.');
+    }
+  }
+
+  async function trocarSenha() {
+    const p = passwordProblem(senha);
+    if (p) return setSenhaMsg({ ok: false, text: p });
+    if (senha !== senha2) return setSenhaMsg({ ok: false, text: 'As senhas não são iguais.' });
+    setBusy(true);
+    try {
+      await auth.updatePassword(senha);
+      setSenha('');
+      setSenha2('');
+      setSenhaMsg({ ok: true, text: 'Senha alterada.' });
+    } catch (e) {
+      const m = authErrorMessage(e);
+      setSenhaMsg({ ok: false, text: /reauth|recent/i.test(m) ? 'Por segurança, saia e entre de novo antes de trocar a senha.' : m });
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function del() {
@@ -66,7 +92,7 @@ export function AccountScreen({ status, hasPending, forgetDevice, onBack }: Prop
           {STATUS_TEXT[status]}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Btn onClick={signOut} disabled={busy}>
+          <Btn onClick={() => void signOut()} disabled={busy}>
             {confirmOut ? 'Sair mesmo assim' : 'Sair da conta'}
           </Btn>
           {confirmOut && <Btn onClick={() => setConfirmOut(false)}>Cancelar</Btn>}
@@ -77,6 +103,30 @@ export function AccountScreen({ status, hasPending, forgetDevice, onBack }: Prop
           </p>
         )}
         <p className="mt-3 text-xs text-muted">Ao sair, os dados da conta são apagados deste aparelho. Eles continuam na sua conta.</p>
+      </Card>
+
+      <Card>
+        <h2 className="mb-1 font-display text-xl font-semibold tracking-wide">Segurança</h2>
+        <div className="mb-4 rounded-lg bg-warn-soft px-3 py-2 text-sm">
+          <strong className="text-warn">Cuidado com golpes:</strong> nunca pedimos senha, código de verificação ou dados de cartão por WhatsApp, SMS, ligação ou
+          e-mail. O pagamento do Pro só acontece pela página do Asaas aberta a partir deste app.
+        </div>
+        {provider === 'email' && (
+          <div className="mb-4 grid gap-2">
+            <h3 className="text-sm font-semibold">Trocar senha</h3>
+            <TextField label="Nova senha" type="password" value={senha} onChange={setSenha} autoComplete="new-password" />
+            <TextField label="Repita a nova senha" type="password" value={senha2} onChange={setSenha2} autoComplete="new-password" />
+            {senhaMsg && <p className={`text-sm ${senhaMsg.ok ? 'text-good' : 'text-bad'}`}>{senhaMsg.text}</p>}
+            <Btn onClick={trocarSenha} disabled={busy || !senha || !senha2}>
+              Salvar nova senha
+            </Btn>
+          </div>
+        )}
+        <h3 className="text-sm font-semibold">Perdeu o celular ou acha que alguém entrou na sua conta?</h3>
+        <p className="mb-2 text-sm text-muted">Encerra a sessão em todos os aparelhos, inclusive neste. Depois, troque a senha.</p>
+        <Btn onClick={() => void signOut(true)} disabled={busy}>
+          Sair de todos os aparelhos
+        </Btn>
       </Card>
 
       <Card>

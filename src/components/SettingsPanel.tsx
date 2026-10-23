@@ -15,6 +15,7 @@ interface Props {
   history: HistoryEntry[];
   setHistory: (h: HistoryEntry[]) => void;
   cloud?: boolean;
+  onTutorial?: () => void;
 }
 
 const SECTIONS = [
@@ -26,10 +27,18 @@ const SECTIONS = [
   ['aj-dados', 'Backup'],
 ] as const;
 
-export function SettingsPanel({ s, setSettings, history, setHistory, cloud }: Props) {
+export function SettingsPanel({ s, setSettings, history, setHistory, cloud, onTutorial }: Props) {
   const pend = pendingEstimates(s);
   return (
     <div className="flex flex-col gap-5">
+      {onTutorial && (
+        <p className="-mb-2 text-sm text-muted">
+          Ficou com dúvida?{' '}
+          <button className="font-semibold text-accent" onClick={onTutorial}>
+            Ver o tutorial de novo
+          </button>
+        </p>
+      )}
       <nav aria-label="Seções dos ajustes" className="-mb-1 flex gap-2 overflow-x-auto pb-1">
         {SECTIONS.map(([id, label]) => (
           <button

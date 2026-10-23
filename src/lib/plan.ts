@@ -13,9 +13,11 @@ export interface Plan {
   trialEndsAt: string | null;
   periodEnd: string | null;
   billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' | null;
+  /** conta bloqueada por chargeback ou estornos repetidos */
+  bloqueado: boolean;
 }
 
-export const FREE_PLAN: Plan = { pro: false, status: 'free', trialEndsAt: null, periodEnd: null, billingType: null };
+export const FREE_PLAN: Plan = { pro: false, status: 'free', trialEndsAt: null, periodEnd: null, billingType: null, bloqueado: false };
 
 /** Só para mostrar ou esconder telas. Quem garante o acesso de verdade é o banco (RLS). */
 export function usePlanLoader(uid: string | null) {
@@ -27,8 +29,8 @@ export function usePlanLoader(uid: string | null) {
     const { data, error } = await supabase.rpc('get_my_plan');
     setLoading(false);
     if (error || !data) return;
-    const d = data as { pro: boolean; status: PlanStatus; trial_ends_at: string | null; current_period_end: string | null; billing_type: Plan['billingType'] };
-    setPlan({ pro: !!d.pro, status: d.status, trialEndsAt: d.trial_ends_at, periodEnd: d.current_period_end, billingType: d.billing_type });
+    const d = data as { pro: boolean; status: PlanStatus; trial_ends_at: string | null; current_period_end: string | null; billing_type: Plan['billingType']; bloqueado?: boolean };
+    setPlan({ pro: !!d.pro, status: d.status, trialEndsAt: d.trial_ends_at, periodEnd: d.current_period_end, billingType: d.billing_type, bloqueado: !!d.bloqueado });
   }, [uid]);
 
   useEffect(() => {
@@ -51,6 +53,8 @@ export interface PlanCtx {
   plan: Plan;
   /** abre a tela do plano Pro */
   upgrade: () => void;
+  /** plano ainda carregando (não mostra anúncio para quem pode ser Pro) */
+  loading?: boolean;
 }
 
 export const PlanContext = createContext<PlanCtx>({ plan: FREE_PLAN, upgrade: () => undefined });
@@ -113,8 +117,8 @@ export function startCheckout(cpfCnpj: string, billingType: 'PIX' | 'CREDIT_CARD
   return callFn('assinar', { cpfCnpj, billingType });
 }
 
-export function cancelSubscription() {
-  return callFn('cancelar', {});
+export function cancelSubscription(motivo: string) {
+  return callFn('cancelar', { motivo });
 }
 
 /** Validação de CPF/CNPJ (a mesma do servidor), só para avisar antes de enviar. */

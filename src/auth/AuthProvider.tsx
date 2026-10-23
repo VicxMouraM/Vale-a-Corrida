@@ -17,7 +17,7 @@ interface AuthState {
   signInGoogle: () => Promise<void>;
   sendPasswordReset: (email: string, captchaToken?: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  signOut: (everywhere?: boolean) => Promise<void>;
   deleteAccount: () => Promise<void>;
 }
 
@@ -100,14 +100,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       setRecovering(false);
     },
-    async signOut() {
-      await need().auth.signOut();
+    async signOut(everywhere = false) {
+      // everywhere: encerra a sessão em todos os aparelhos (celular perdido ou roubado)
+      await need().auth.signOut({ scope: everywhere ? 'global' : 'local' });
       setRecovering(false);
     },
     async deleteAccount() {
+      // Pelo servidor: cancela a assinatura no Asaas antes de apagar (senão continuaria cobrando)
       const sb = need();
-      const { error } = await sb.rpc('delete_my_account');
-      if (error) throw error;
+      const { error } = await sb.functions.invoke('excluir-conta', { body: { confirmacao: 'EXCLUIR' } });
+      if (error) {
+        let msg = 'Não foi possível excluir a conta agora. Tente de novo.';
+        try {
+          const j = await (error as { context?: Response }).context?.json();
+          if (j?.error) msg = j.error;
+        } catch {
+          /* sem corpo */
+        }
+        throw new Error(msg);
+      }
       await sb.auth.signOut({ scope: 'local' });
     },
   };

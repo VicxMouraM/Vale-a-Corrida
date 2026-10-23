@@ -6,6 +6,7 @@ import { Calculator } from './components/Calculator';
 import { Goals } from './components/Goals';
 import { LegalLinks, LegalScreen, type LegalDoc } from './components/LegalScreen';
 import { Onboarding } from './components/Onboarding';
+import { Tour, TUTORIAL } from './components/Tour';
 import { PlanScreen } from './components/PlanScreen';
 import { History, type Draft } from './components/History';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -86,7 +87,7 @@ function Main({ uid }: { uid: string | null }) {
   }
 
   return (
-    <PlanContext.Provider value={{ plan, upgrade: () => setScreen('plano') }}>
+    <PlanContext.Provider value={{ plan, upgrade: () => setScreen('plano'), loading: planLoader.loading }}>
     <Shell
       plan={plan}
       showPlan={auth.enabled}
@@ -226,6 +227,7 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
             {TABS.map((t) => (
               <button
                 key={t.id}
+                data-tour={`nav-${t.id}`}
                 onClick={() => goTab(t.id)}
                 aria-current={tab === t.id ? 'page' : undefined}
                 className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
@@ -241,6 +243,7 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
             {statusText && <span className={`hidden text-xs sm:inline ${statusBad ? 'text-bad' : 'text-warn'}`}>{statusText}</span>}
             {showPlan && (
               <button
+                data-tour="plano"
                 onClick={onPlan}
                 className={`rounded-full px-2.5 py-1 text-xs font-bold ${plan.pro ? 'bg-accent text-accent-ink' : 'border border-accent/50 text-accent hover:bg-sunk'}`}
               >
@@ -267,10 +270,14 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
           <Onboarding s={settings} setSettings={setSettings} />
         ) : (
           <>
+        {tab === 'corrida' && !settings.tutorialVisto && !overlay && <Tour steps={TUTORIAL} onClose={() => setSettings({ ...settings, tutorialVisto: true })} />}
         {tab === 'corrida' && <Calculator offer={offer} setOffer={setOffer} settings={settings} setSettings={setSettings} onRegister={registerFromAnalysis} onOpenSettings={openSettings} today={today} />}
         {tab === 'metas' && <Goals s={settings} setSettings={setSettings} hist={hist} />}
         {tab === 'historico' && <History s={settings} history={visible} setHistory={setVisible} draft={draft} setDraft={setDraft} hiddenCount={hidden.length} />}
-        {tab === 'ajustes' && <SettingsPanel s={settings} setSettings={setSettings} history={history} setHistory={setHistory} cloud={accountLabel === 'Conta'} />}
+        {tab === 'ajustes' && <SettingsPanel s={settings} setSettings={setSettings} history={history} setHistory={setHistory} cloud={accountLabel === 'Conta'} onTutorial={() => {
+          setSettings({ ...settings, tutorialVisto: false });
+          goTab('corrida');
+        }} />}
           </>
         )}
           </>
@@ -289,6 +296,7 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
           {TABS.map((t) => (
             <button
               key={t.id}
+              data-tour={`nav-${t.id}`}
               onClick={() => goTab(t.id)}
               aria-current={tab === t.id ? 'page' : undefined}
               className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold ${tab === t.id ? 'text-accent' : 'text-muted'}`}

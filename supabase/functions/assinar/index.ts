@@ -1,6 +1,26 @@
-// Cria (ou reaproveita) a assinatura Pro no Asaas e devolve o link de pagamento da primeira cobrança.
+// Cria (ou reaproveita) a assinatura Pro no Asaas e devolve o link de pagamento da cobrança em aberto.
 // Chamada pelo app com o usuário logado. Corpo: { cpfCnpj: string, billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' }
-import { admin, asaas, AsaasError, cors, cpfCnpjValido, hojeSP, json, PRECO_PRO, userFrom } from '../_shared/util.ts';
+//
+// Antifraude:
+// - conta bloqueada (chargeback, fraude) ou CPF/e-mail em lista de bloqueio → recusa
+// - no máximo 5 cobranças geradas por hora e 10 por dia por usuário (evita teste de cartões e spam de cobranças)
+// - e-mail precisa estar confirmado
+import {
+  admin,
+  asaas,
+  AsaasError,
+  audit,
+  cors,
+  countRecent,
+  cpfCnpjValido,
+  cpfHash,
+  emailHashDb,
+  hojeSP,
+  isBlocked,
+  json,
+  PRECO_PRO,
+  userFrom,
+} from '../_shared/util.ts';
 
 type Billing = 'PIX' | 'CREDIT_CARD' | 'BOLETO';
 const TIPOS: Billing[] = ['PIX', 'CREDIT_CARD', 'BOLETO'];
@@ -12,12 +32,15 @@ interface Payment {
   dueDate: string;
 }
 
+const MSG_BLOQUEIO = 'Não é possível assinar com esta conta. Se acha que é um engano, fale com o suporte pelo e-mail dos Termos de uso.';
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors(req) });
   if (req.method !== 'POST') return json(req, { error: 'Método não permitido' }, 405);
 
   const user = await userFrom(req);
   if (!user) return json(req, { error: 'Entre na sua conta para assinar.' }, 401);
+  if (user.email && !user.email_confirmed_at) return json(req, { error: 'Confirme o seu e-mail antes de assinar.' }, 403);
 
   let body: { cpfCnpj?: string; billingType?: string };
   try {
@@ -38,12 +61,26 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Bloqueios: conta, CPF ou e-mail com histórico de contestação/fraude
+    const hCpf = await cpfHash(cpfCnpj);
+    const hEmail = user.email ? await emailHashDb(db, user.email) : null;
+    if (sub?.bloqueado || (await isBlocked(db, 'cpf', hCpf)) || (hEmail && (await isBlocked(db, 'email', hEmail)))) {
+      await audit(db, user.id, 'assinar_bloqueado', { cpf_hash: hCpf.slice(0, 12) });
+      return json(req, { error: MSG_BLOQUEIO }, 403);
+    }
+
+    // Limite de tentativas (conta todas, inclusive as que falham)
+    if ((await countRecent(db, user.id, 'assinar_tentativa', 60)) >= 5 || (await countRecent(db, user.id, 'assinar_tentativa', 24 * 60)) >= 10) {
+      return json(req, { error: 'Muitas tentativas de assinatura. Espere um pouco e tente de novo.' }, 429);
+    }
+    await audit(db, user.id, 'assinar_tentativa', { billingType });
+
     // Já paga e em dia: nada a fazer
     if (sub?.status === 'active' && sub.current_period_end && new Date(sub.current_period_end) > new Date()) {
       return json(req, { error: 'Sua assinatura Pro já está ativa.' }, 409);
     }
 
-    // Cliente no Asaas (CPF fica só no Asaas, não no nosso banco)
+    // Cliente no Asaas (CPF fica só no Asaas; aqui guardamos só o hash com segredo, para bloqueios)
     let customerId: string | null = sub?.asaas_customer_id ?? null;
     if (!customerId) {
       const nome = (user.user_metadata?.nome || user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'Cliente') as string;
@@ -52,13 +89,14 @@ Deno.serve(async (req) => {
         email: user.email,
         cpfCnpj,
         externalReference: user.id,
+        notificationDisabled: false,
       });
       customerId = c.id;
     } else {
       await asaas('PUT', `/customers/${customerId}`, { cpfCnpj });
     }
 
-    // Assinatura pendente com a mesma forma de pagamento: devolve o link que já existe
+    // Assinatura em aberto com a mesma forma de pagamento: devolve o link que já existe
     let subscriptionId: string | null = sub?.asaas_subscription_id ?? null;
     const emAberto = !!subscriptionId && !['canceled', 'refunded'].includes(sub?.status ?? '');
     const reaproveitavel = emAberto && sub?.asaas_billing_type === billingType;
@@ -90,8 +128,11 @@ Deno.serve(async (req) => {
       asaas_customer_id: customerId,
       asaas_subscription_id: subscriptionId,
       asaas_billing_type: billingType,
+      cancelado_em: null,
+      motivo_cancelamento: null,
     });
     if (up.error) throw up.error;
+    await audit(db, user.id, 'assinar', { billingType, subscriptionId, reaproveitada: reaproveitavel, cpf_hash: hCpf.slice(0, 12) });
 
     if (!aberta?.invoiceUrl) return json(req, { error: 'A cobrança ainda está sendo gerada. Tente de novo em alguns segundos.' }, 503);
     return json(req, { invoiceUrl: aberta.invoiceUrl });

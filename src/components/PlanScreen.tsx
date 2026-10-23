@@ -15,6 +15,16 @@ const RECURSOS: { nome: string; gratis: string | boolean; pro: string | boolean 
   { nome: 'Metas da semana e do mês', gratis: false, pro: true },
   { nome: 'Gráficos e relatórios', gratis: false, pro: true },
   { nome: 'Exportar para Excel (CSV)', gratis: false, pro: true },
+  { nome: 'Sem anúncios', gratis: false, pro: true },
+];
+
+const MOTIVOS: [string, string][] = [
+  ['caro', 'Está caro'],
+  ['nao_uso', 'Não estou usando'],
+  ['faltou_recurso', 'Faltou algum recurso'],
+  ['problema', 'Tive um problema no app'],
+  ['parei_de_rodar', 'Parei de rodar'],
+  ['outro', 'Outro motivo'],
 ];
 
 const fmtData = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -34,6 +44,7 @@ export function PlanScreen({ plan, loggedIn, onLogin, onBack, refresh }: Props) 
   const [error, setError] = useState<string | null>(null);
   const [waiting, setWaiting] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [motivo, setMotivo] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
 
   const pago = plan.periodEnd && new Date(plan.periodEnd) > new Date();
@@ -56,7 +67,7 @@ export function PlanScreen({ plan, loggedIn, onLogin, onBack, refresh }: Props) 
   async function cancelar() {
     setBusy(true);
     setError(null);
-    const r = await cancelSubscription();
+    const r = await cancelSubscription(motivo);
     setBusy(false);
     setConfirmCancel(false);
     if (r.error) return setError(r.error);
@@ -110,6 +121,14 @@ export function PlanScreen({ plan, loggedIn, onLogin, onBack, refresh }: Props) 
           <Btn kind="primary" onClick={onLogin}>
             Criar conta ou entrar
           </Btn>
+        </Card>
+      ) : plan.bloqueado ? (
+        <Card className="border-bad/40">
+          <h2 className="mb-1 font-display text-xl font-semibold tracking-wide text-bad">Assinatura indisponível</h2>
+          <p className="text-sm">
+            Esta conta não pode assinar o Pro por causa de contestações ou estornos de pagamentos anteriores. O plano Grátis continua funcionando normalmente. Se acha
+            que é um engano, escreva para o e-mail que está nos Termos de uso.
+          </p>
         </Card>
       ) : ativo ? null : (
         <Card>
@@ -168,11 +187,22 @@ export function PlanScreen({ plan, loggedIn, onLogin, onBack, refresh }: Props) 
             Sem multa. {pago ? `O Pro continua liberado até ${fmtData(plan.periodEnd!)}.` : ''} Seu histórico fica guardado: se voltar a assinar, tudo reaparece.
           </p>
           {confirmCancel ? (
-            <div className="flex flex-wrap gap-2">
-              <Btn kind="danger" disabled={busy} onClick={cancelar}>
-                Sim, cancelar
-              </Btn>
-              <Btn onClick={() => setConfirmCancel(false)}>Voltar</Btn>
+            <div className="grid gap-3">
+              <fieldset className="grid gap-1.5">
+                <legend className="mb-1 text-sm font-medium">Pode contar o motivo? (opcional)</legend>
+                {MOTIVOS.map(([v, t]) => (
+                  <label key={v} className="flex items-center gap-2 text-sm">
+                    <input type="radio" name="motivo" value={v} checked={motivo === v} onChange={() => setMotivo(v)} />
+                    {t}
+                  </label>
+                ))}
+              </fieldset>
+              <div className="flex flex-wrap gap-2">
+                <Btn kind="danger" disabled={busy} onClick={cancelar}>
+                  {busy ? 'Cancelando…' : 'Confirmar cancelamento'}
+                </Btn>
+                <Btn onClick={() => setConfirmCancel(false)}>Manter o Pro</Btn>
+              </div>
             </div>
           ) : (
             <Btn kind="danger" onClick={() => setConfirmCancel(true)}>

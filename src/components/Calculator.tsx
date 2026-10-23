@@ -5,6 +5,7 @@ import type { FuelChoice, Offer, Settings } from '../types';
 import { EMPTY_OFFER, EXAMPLE_OFFER } from '../defaults';
 import { Btn, Card, Details, NumField, Segmented } from './ui';
 import { VERDICT } from './Verdict';
+import { AdSlot } from './AdSlot';
 import { usePlan } from '../lib/plan';
 import { activatePlatform, activePlatform, offerLabels, platforms } from '../lib/platforms';
 import { activateVehicle, garage } from '../lib/vehicles';
@@ -128,6 +129,7 @@ export function Calculator({ offer, setOffer, settings: s, setSettings, onRegist
             <Statement a={a} s={s} offer={offer} onOpenSettings={onOpenSettings} />
           </>
         )}
+        <AdSlot slot={1} />
       </div>
 
       {a && !heroVisible && (
@@ -172,7 +174,7 @@ function Hero({ a, s, heroRef, onRegister }: { a: Analysis; s: Settings; heroRef
   const v = VERDICT[a.veredito];
   const custo = a.receita - a.lucroDecisao;
   return (
-    <section ref={heroRef} className={`scroll-mt-20 overflow-hidden rounded-xl border-2 ${v.box}`} aria-live="polite">
+    <section ref={heroRef} data-tour="resultado" className={`scroll-mt-20 overflow-hidden rounded-xl border-2 ${v.box}`} aria-live="polite">
       <div className="p-4 sm:p-5">
         <div className="flex items-center gap-3">
           <span className="text-3xl leading-none" aria-hidden>
@@ -213,7 +215,7 @@ function Hero({ a, s, heroRef, onRegister }: { a: Analysis; s: Settings; heroRef
             </span>
           )}
         </div>
-        <Btn kind="primary" onClick={onRegister}>
+        <Btn kind="primary" onClick={onRegister} tour="registrar">
           Aceitei: registrar
         </Btn>
       </div>
@@ -379,7 +381,7 @@ function WorkBar({ s, setSettings, onOpenSettings }: { s: Settings; setSettings:
   const ps = platforms(s);
   const pick = 'min-w-0 flex-1 truncate rounded-md border border-line bg-surface px-2 py-1.5 text-sm font-medium outline-none focus:border-accent';
   return (
-    <div className="flex items-center gap-2">
+    <div data-tour="workbar" className="flex items-center gap-2">
       {plan.pro && vs.length > 1 ? (
         <select aria-label="Veículo em uso" className={pick} value={s.veiculoAtivo ?? ''} onChange={(e) => setSettings(activateVehicle(s, e.target.value))}>
           {vs.map((v) => (

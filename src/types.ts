@@ -62,6 +62,8 @@ export interface Settings {
   veiculoAtivo: string | null;
   plataformas: PlatformProfile[];
   plataformaAtiva: string | null;
+  /** já viu o tutorial do primeiro acesso */
+  tutorialVisto?: boolean;
   veiculo: {
     nome: string;
     precoGasolina: number;

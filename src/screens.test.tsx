@@ -91,6 +91,17 @@ describe('telas', () => {
     });
   }
 
+  it('conta bloqueada não vê o formulário de assinatura', () => {
+    const bloq = { ...FREE_PLAN, bloqueado: true };
+    const html = withPlan(bloq, <PlanScreen plan={bloq} loggedIn onLogin={noop} onBack={noop} refresh={async () => undefined} />);
+    expect(html).toContain('Assinatura indisponível');
+    expect(html).not.toContain('CPF ou CNPJ');
+  });
+
+  it('pro tem "sem anúncios" entre os benefícios', () => {
+    expect(withPlan(FREE_PLAN, <PlanScreen plan={FREE_PLAN} loggedIn onLogin={noop} onBack={noop} refresh={async () => undefined} />)).toContain('Sem anúncios');
+  });
+
   it('termos e privacidade', () => {
     expect(renderToString(<LegalScreen doc="termos" onDoc={noop} onBack={noop} />)).toContain('Planos e pagamento');
     expect(renderToString(<LegalScreen doc="privacidade" onDoc={noop} onBack={noop} />)).toContain('LGPD');

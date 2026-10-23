@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: Settings = {
   veiculoAtivo: null,
   plataformas: [],
   plataformaAtiva: null,
+  tutorialVisto: false,
   veiculo: {
     nome: 'Hyundai ix35 GLS 2.0 2012 automático blindado',
     precoGasolina: 6.34,

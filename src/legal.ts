@@ -7,12 +7,12 @@
  */
 export const LEGAL = {
   produto: 'Vale a Corrida',
-  responsavel: '[NOME COMPLETO OU RAZÃO SOCIAL]',
-  documento: '[CPF OU CNPJ]',
-  email: '[E-MAIL DE CONTATO]',
-  cidade: '[CIDADE/UF]',
+  responsavel: 'Victoria Moura',
+  documento: '65.504.803/0001-29',
+  email: 'vicxmoura@gmail.com',
+  cidade: 'São Paulo/SP',
   atualizadoEm: '23 de outubro de 2026',
-  versao: '2026-10-23',
+  versao: '2026-10-23.2',
 };
 
 export interface LegalSection {
@@ -42,18 +42,21 @@ export const TERMOS: LegalSection[] = [
   {
     titulo: '3. Planos e pagamento',
     paragrafos: [
-      'O plano Grátis inclui a calculadora, a meta do dia, 1 veículo, 1 plataforma e o histórico dos últimos 30 dias. O plano Pro libera o histórico completo, vários veículos e plataformas, metas de semana e mês, gráficos, comparação entre plataformas e exportação.',
-      'Toda conta nova ganha 7 dias de Pro grátis, uma vez por e-mail, sem precisar informar forma de pagamento.',
+      'O plano Grátis inclui a calculadora, a meta do dia, 1 veículo, 1 plataforma e o histórico dos últimos 30 dias, e exibe anúncios. O plano Pro libera o histórico completo, vários veículos e plataformas, metas de semana e mês, gráficos, comparação entre plataformas e exportação, sem anúncios.',
+      'Toda conta nova ganha 7 dias de Pro grátis, uma vez por pessoa, sem precisar informar forma de pagamento. Endereços de e-mail temporários ou variações do mesmo e-mail (como pontos e “+apelido” no Gmail) não dão direito a um novo teste.',
       'O Pro custa R$ 49,99 por mês, cobrado pelo Asaas (Pix, cartão ou boleto) e renovado todo mês até você cancelar. O preço pode mudar; avisaremos com pelo menos 30 dias de antecedência, e o novo valor só vale a partir da renovação seguinte.',
       'Você pode cancelar a qualquer momento, no próprio app, sem multa. O Pro continua liberado até o fim do período já pago. Não há reembolso proporcional de mês em andamento, exceto quando a lei exigir.',
       'Direito de arrependimento: em até 7 dias após o primeiro pagamento, você pode pedir o reembolso integral pelo e-mail de contato (Código de Defesa do Consumidor, art. 49).',
-      'Se um pagamento atrasar, o Pro continua por 3 dias de tolerância e depois volta ao Grátis. Seus dados não são apagados: as corridas mais antigas ficam guardadas e reaparecem quando a assinatura voltar.',
+      'Se um pagamento atrasar, o Pro continua por 3 dias de tolerância e depois volta ao Grátis. Se a cobrança continuar em aberto por mais 7 dias, a assinatura é cancelada automaticamente, para não gerar novas cobranças. Uma cobrança gerada e nunca paga também é cancelada depois de 7 dias.',
+      'Seus dados não são apagados quando o Pro acaba: as corridas mais antigas ficam guardadas e reaparecem quando a assinatura voltar.',
+      'Estorno: o acesso Pro termina na hora e a assinatura é cancelada. Contestação de pagamento no cartão (chargeback) sem motivo legítimo, ou estornos repetidos, impedem novas assinaturas com a mesma conta, CPF ou e-mail. Se acha que houve engano, fale conosco.',
     ],
   },
   {
     titulo: '4. Uso permitido',
     paragrafos: [
-      'Não use o app para atividades ilegais, nem tente acessar dados de outras pessoas, contornar os limites dos planos, sobrecarregar o serviço ou copiar o app.',
+      'Não use o app para atividades ilegais, nem tente acessar dados de outras pessoas, contornar os limites dos planos ou o teste grátis (por exemplo, criando várias contas), sobrecarregar o serviço ou copiar o app.',
+      'Nunca pedimos sua senha, código de verificação ou dados de cartão por WhatsApp, SMS, telefone ou e-mail. Pagamentos acontecem só pela página do Asaas aberta a partir do app. Desconfie de qualquer contato pedindo isso em nosso nome.',
       'Podemos suspender contas que violem estes termos, com aviso quando possível.',
     ],
   },
@@ -86,7 +89,7 @@ export const PRIVACIDADE: LegalSection[] = [
       'Conta: e-mail, nome (se você informar) e, no login com Google, o nome e o e-mail da sua conta Google. Usamos para criar e proteger sua conta (execução do contrato).',
       'Dados do app: veículos, plataformas, custos, metas e o histórico de corridas que você registra. Usamos só para fazer os cálculos e mostrar seus relatórios (execução do contrato). Não usamos sua localização.',
       'Pagamento: o CPF ou CNPJ e os dados de pagamento vão direto para o Asaas, que emite a cobrança. Nós guardamos só o identificador da assinatura e a situação do pagamento (execução do contrato e obrigação legal).',
-      'Teste grátis: guardamos um código irreversível (hash) do e-mail para que o teste seja usado uma vez só, mesmo após a exclusão da conta (legítimo interesse, prevenção a fraude).',
+      'Prevenção a fraudes (legítimo interesse): guardamos um código irreversível (hash) do e-mail para que o teste grátis seja usado uma vez só; em caso de chargeback ou estornos repetidos, guardamos códigos irreversíveis do CPF e do e-mail para impedir novas assinaturas; e registramos as ações sensíveis da conta (assinar, cancelar, pagamentos, exclusão) com data e hora. Esses registros não contêm o CPF nem o e-mail em texto.',
       'Registros técnicos: o provedor de hospedagem registra acessos (endereço IP, data e hora) por segurança, como exige o Marco Civil da Internet.',
     ],
   },
@@ -95,6 +98,7 @@ export const PRIVACIDADE: LegalSection[] = [
     paragrafos: [
       'Supabase (banco de dados e login), região de São Paulo; Asaas (cobrança); Google (somente se você escolher entrar com Google); GitHub Pages (hospedagem do app); API pública da tabela FIPE (consultas de marca, modelo e ano, sem dados pessoais).',
       'Não vendemos nem alugamos seus dados, e não os usamos para publicidade.',
+      'Anúncios (só no plano Grátis): os anúncios de patrocinadores são exibidos pelo próprio app, sem enviar dados seus ao anunciante. Ao tocar em um anúncio, você vai para o site do anunciante, que tem a própria política de privacidade. Se um dia usarmos o Google AdSense, os anúncios serão não personalizados e esta política será atualizada antes.',
     ],
   },
   {
@@ -106,7 +110,7 @@ export const PRIVACIDADE: LegalSection[] = [
   {
     titulo: '5. Por quanto tempo',
     paragrafos: [
-      'Enquanto sua conta existir. Ao excluir a conta (Conta → Excluir minha conta), apagamos na hora a conta, os ajustes e todo o histórico. Ficam apenas o hash do teste grátis e os registros de pagamento que a lei manda guardar (no Asaas, por até 5 anos).',
+      'Enquanto sua conta existir. Ao excluir a conta (Conta → Excluir minha conta), cancelamos a assinatura e apagamos na hora a conta, os ajustes e todo o histórico. Ficam apenas os códigos irreversíveis de prevenção a fraude, o registro de que a conta foi excluída e os registros de pagamento que a lei manda guardar (no Asaas, por até 5 anos).',
     ],
   },
   {

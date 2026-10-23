@@ -9,6 +9,7 @@ import { platformName, platforms } from '../lib/platforms';
 import { activateVehicle, garage } from '../lib/vehicles';
 import { BarChart, StackBar } from './charts';
 import { ProGate, ProTag } from './Pro';
+import { AdSlot } from './AdSlot';
 import { Btn, Card, NumField, SectionTitle, Segmented, TextField } from './ui';
 
 export interface Draft {
@@ -210,10 +211,12 @@ export function History({ s, history, setHistory, draft, setDraft, hiddenCount =
         <Card className="border-dashed text-center">
           <p className="font-display text-xl font-semibold">Nenhuma corrida neste período</p>
           <p className="mt-1 text-sm text-muted">
-            Depois de fazer uma corrida, toque em “Aceitei: registrar no histórico” na calculadora ou em “+ Registrar corrida” acima.
+            Depois de fazer uma corrida, toque em “Aceitei: registrar” na calculadora ou em “+ Registrar corrida” acima.
           </p>
         </Card>
       )}
+
+      <AdSlot slot={2} />
 
       <ByPlatform s={s} list={list} />
 

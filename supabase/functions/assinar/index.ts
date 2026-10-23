@@ -32,6 +32,15 @@ interface Payment {
   dueDate: string;
 }
 
+/**
+ * Depois de pagar (Pix ou cartão), o Asaas manda a pessoa de volta ao app.
+ * APP_URL precisa ser do MESMO domínio cadastrado em Asaas → Minha conta → Informações (site).
+ */
+const APP_URL = (Deno.env.get('APP_URL') ?? '').trim();
+const CALLBACK = /^https:\/\/[^/]+/.test(APP_URL)
+  ? { successUrl: `${APP_URL.replace(/\/+$/, '')}/?pagamento=ok#corrida`, autoRedirect: true }
+  : null;
+
 const MSG_BLOQUEIO = 'Não é possível assinar com esta conta. Se acha que é um engano, fale com o suporte pelo e-mail dos Termos de uso.';
 
 Deno.serve(async (req) => {
@@ -110,7 +119,7 @@ Deno.serve(async (req) => {
       subscriptionId = null;
     }
     if (!reaproveitavel || !subscriptionId) {
-      const s = await asaas<{ id: string }>('POST', '/subscriptions', {
+      const dados = {
         customer: customerId,
         billingType,
         value: PRECO_PRO,
@@ -118,12 +127,22 @@ Deno.serve(async (req) => {
         cycle: 'MONTHLY',
         description: 'Vale a Corrida Pro',
         externalReference: user.id,
+      };
+      // Com retorno ao site; se o Asaas recusar o endereço (domínio diferente do cadastrado na conta), cria sem.
+      const s = await asaas<{ id: string }>('POST', '/subscriptions', CALLBACK ? { ...dados, callback: CALLBACK } : dados).catch((e) => {
+        if (!CALLBACK || !(e instanceof AsaasError) || e.status >= 500) throw e;
+        console.warn('assinar: retorno ao site recusado pelo Asaas, criando sem', e.message);
+        return asaas<{ id: string }>('POST', '/subscriptions', dados);
       });
       subscriptionId = s.id;
     }
 
     const pays = await asaas<{ data: Payment[] }>('GET', `/subscriptions/${subscriptionId}/payments`);
     const aberta = pays.data.find((p) => p.status === 'PENDING' || p.status === 'OVERDUE') ?? pays.data[0];
+    // Cobrança reaproveitada (criada antes do retorno existir): coloca o retorno nela também
+    if (CALLBACK && aberta && reaproveitavel) {
+      await asaas('PUT', `/payments/${aberta.id}`, { callback: CALLBACK }).catch((e) => console.warn('assinar: callback na cobrança', e));
+    }
 
     const novoStatus = sub?.status === 'trial' || sub?.status === 'active' || sub?.status === 'overdue' ? sub.status : 'pending';
     const up = await db.from('subscriptions').upsert({

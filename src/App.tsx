@@ -65,6 +65,38 @@ function Main({ uid }: { uid: string | null }) {
     window.scrollTo({ top: 0 });
   };
 
+  // Voltou da página de pagamento do Asaas (?pagamento=ok): avisa e confere o plano até o Pro liberar
+  const [voltouDoPagamento] = useState(() => {
+    try {
+      const u = new URL(location.href);
+      if (u.searchParams.get('pagamento') !== 'ok') return false;
+      u.searchParams.delete('pagamento');
+      window.history.replaceState(null, '', u.pathname + u.search + u.hash);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  const [pagamento, setPagamento] = useState<'aguardando' | 'liberado' | 'demorando' | null>(voltouDoPagamento ? 'aguardando' : null);
+  useEffect(() => {
+    if (pagamento !== 'aguardando' || !uid) return;
+    if (plan.pro && plan.status === 'active') return setPagamento('liberado');
+    let tentativas = 0;
+    const t = setInterval(() => {
+      tentativas++;
+      if (tentativas > 20) {
+        clearInterval(t);
+        setPagamento('demorando');
+      } else void planLoader.refresh();
+    }, 3000);
+    return () => clearInterval(t);
+  }, [pagamento, uid, plan.pro, plan.status, planLoader.refresh]);
+  useEffect(() => {
+    if (pagamento !== 'liberado') return;
+    const t = setTimeout(() => setPagamento(null), 10000);
+    return () => clearTimeout(t);
+  }, [pagamento]);
+
   // Virou Pro (pagou): busca de novo para trazer o histórico antigo que o plano grátis escondia
   const lastPro = useRef<boolean | null>(null);
   useEffect(() => {
@@ -123,7 +155,27 @@ function Main({ uid }: { uid: string | null }) {
         ) : null
       }
       banner={
-        app.importOffer && (
+        <>
+        {pagamento && (
+          <div
+            role="status"
+            className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-sm ${
+              pagamento === 'liberado' ? 'border-good/40 bg-good-soft' : pagamento === 'demorando' ? 'border-warn/40 bg-warn-soft' : 'border-accent/40 bg-surface'
+            }`}
+          >
+            <p>
+              {pagamento === 'liberado'
+                ? '🎉 Pagamento confirmado! O Pro está liberado: histórico completo, gráficos e nada de anúncios.'
+                : pagamento === 'demorando'
+                  ? 'O pagamento ainda não foi confirmado. Pix e cartão costumam liberar em segundos; boleto leva até 3 dias úteis. O Pro aparece sozinho quando confirmar.'
+                  : 'Pagamento recebido. Liberando o seu Pro… (leva alguns segundos)'}
+            </p>
+            <button className="font-semibold text-muted hover:text-ink" onClick={() => setPagamento(null)}>
+              Fechar
+            </button>
+          </div>
+        )}
+        {app.importOffer && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/40 bg-surface p-4">
             <p className="text-sm">
               Encontramos dados salvos neste aparelho
@@ -138,7 +190,8 @@ function Main({ uid }: { uid: string | null }) {
               </button>
             </div>
           </div>
-        )
+        )}
+        </>
       }
     />
     </PlanContext.Provider>

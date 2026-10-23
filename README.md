@@ -92,6 +92,35 @@ Use como motorista de verdade e anote aqui embaixo, com data, tudo que travar, c
 
 > Você sabe quanto sobra de verdade em cada corrida? O **Vale a Corrida?** calcula na hora o lucro real de cada oferta da Uber, 99, iFood, Lalamove e outros: desconta combustível, manutenção e desgaste do carro e mostra 🟢 vale a pena, 🟡 lucro baixo ou 🔴 prejuízo. É grátis e funciona no celular como app: https://valeacorrida.app.br
 
+## 🛡️ Testes de segurança e antifraude (23/10/2026)
+
+Dois roteiros que podem ser rodados de novo a qualquer momento (por exemplo, depois de mexer no banco ou nas funções). Nenhum dos dois deixa dados nem envia e-mail.
+
+- **Banco** — [supabase/testes-seguranca.sql](supabase/testes-seguranca.sql): `npx supabase db query --linked -f supabase/testes-seguranca.sql`. Cria contas falsas, tenta burlar o teste grátis e o plano e, no fim, desfaz tudo. O resultado vem na mensagem de erro (o erro é proposital).
+- **Internet** — [scripts/testes-seguranca-http.py](scripts/testes-seguranca-http.py): `python scripts/testes-seguranca-http.py`. Ataca com a chave pública do app, como alguém de fora faria.
+
+Resultado: **58 ataques barrados, 0 falhas.**
+
+| Tentativa | Resultado |
+|---|---|
+| Mesmo Gmail com pontos, maiúsculas, `+apelido` ou `@googlemail.com` para ganhar outro teste | sem teste |
+| Outlook com `+apelido` | sem teste |
+| E-mail descartável (mailinator etc.) | sem teste |
+| Excluir a conta e criar de novo com o mesmo e-mail | sem teste |
+| E-mail que já deu chargeback | conta nasce bloqueada |
+| Cadastro por robô (sem captcha) | recusado |
+| Ver, alterar, apagar ou plantar corridas/ajustes de outra pessoa | recusado |
+| Se dar Pro ou cortesia, criar assinatura | recusado |
+| Grátis gravar 2 veículos/2 plataformas ou ver corridas de mais de 30 dias | recusado pelo banco |
+| Ler tabelas internas (auditoria, bloqueios, pagamentos, feedback…) | recusado |
+| Usar assinar/cancelar/excluir conta/ler print sem login ou com token falso | recusado |
+| Aviso de pagamento falso no webhook, rodar a rotina de cancelamento sem o segredo | recusado |
+| Outro site chamando as funções pelo navegador de quem está logado | recusado |
+
+**Brecha corrigida nesta rodada:** o teste grátis tinha a mesma cota de prints do Pro pago (100). Como cada leitura custa dinheiro, quem criasse várias contas com e-mails reais diferentes poderia gastar a leitura à vontade. Agora o teste tem **15 prints** (~R$ 1,50 por conta, no máximo).
+
+**O que nenhum app consegue barrar 100%:** uma pessoa com vários e-mails *reais e diferentes* (ex.: cinco contas do Gmail) ganha um teste em cada. As barreiras deixam isso caro e chato: captcha no cadastro, confirmação obrigatória por e-mail, lista de e-mails descartáveis, cota de prints reduzida no teste e, na hora de pagar, bloqueio por CPF e e-mail em caso de chargeback. O ganho de quem faz isso é só usar o Pro por 7 dias, sem custo relevante para o app.
+
 ## 💬 Ajuda e feedback dos usuários
 
 O link **"Ajuda e feedback"** fica no rodapé de todas as telas (e em Ajustes → "Relatar um problema"). A pessoa escolhe:
@@ -129,10 +158,12 @@ A pessoa precisa ter criado a conta antes. Com cortesia, ela tem tudo do Pro (in
 
 ## 💸 Custo da leitura por print (decisão de 23/10/2026)
 
-| | Grátis | Pro |
-|---|---|---|
-| Prints a cada 30 dias | 1 | **100** |
-| Prints por envio | 1 | até 5 |
+| | Grátis | Teste de 7 dias | Pro (assinado ou cortesia) |
+|---|---|---|---|
+| Prints a cada 30 dias | 1 | 15 | **100** |
+| Prints por envio | 1 | até 5 | até 5 |
+
+O teste tem cota menor de propósito: quem criar várias contas só para usar a leitura (que custa dinheiro) leva no máximo 15 prints por conta (~R$ 1,50).
 
 **Estimativa** (Claude Opus 5.5, US$ 4/US$ 20 por milhão de tokens, US$ 1 = R$ 5,70): ~R$ 0,09 a 0,10 por print. No pior caso, um assinante que usa os 100 prints custa ~R$ 9, cerca de 19% dos R$ 48 líquidos da assinatura. Na prática, quase ninguém usa tudo.
 

@@ -12,7 +12,7 @@ export const LEGAL = {
   email: 'vicxmoura@gmail.com',
   cidade: 'São Paulo/SP',
   atualizadoEm: '23 de outubro de 2026',
-  versao: '2026-10-23.6',
+  versao: '2026-10-23.7',
 };
 
 export interface LegalSection {
@@ -43,7 +43,7 @@ export const TERMOS: LegalSection[] = [
     titulo: '3. Planos e pagamento',
     paragrafos: [
       'O plano Grátis inclui a calculadora, a meta do dia, 1 veículo, 1 plataforma e o histórico dos últimos 30 dias, e exibe anúncios. O plano Pro libera o histórico completo, vários veículos e plataformas, metas de semana e mês, gráficos, comparação entre plataformas e exportação, sem anúncios.',
-      'Toda conta nova ganha 7 dias de Pro grátis, uma vez por pessoa, sem precisar informar forma de pagamento. Endereços de e-mail temporários ou variações do mesmo e-mail (como pontos e “+apelido” no Gmail) não dão direito a um novo teste.',
+      'Toda conta nova ganha 7 dias de Pro grátis, uma vez por pessoa, sem precisar informar forma de pagamento. Endereços de e-mail temporários ou variações do mesmo e-mail (como pontos e “+apelido” no Gmail) não dão direito a um novo teste. Durante o teste, a importação por print é limitada a 15 prints (no Pro assinado são 100 por mês).',
       'O Pro custa R$ 49,99 por mês, cobrado pelo Asaas (Pix, cartão ou boleto) e renovado todo mês até você cancelar. O preço pode mudar; avisaremos com pelo menos 30 dias de antecedência, e o novo valor só vale a partir da renovação seguinte.',
       'Você pode cancelar a qualquer momento, no próprio app, sem multa. O Pro continua liberado até o fim do período já pago. Não há reembolso proporcional de mês em andamento, exceto quando a lei exigir.',
       'Direito de arrependimento: em até 7 dias após o primeiro pagamento, você pode pedir o reembolso integral pelo e-mail de contato (Código de Defesa do Consumidor, art. 49).',

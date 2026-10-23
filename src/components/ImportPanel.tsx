@@ -434,6 +434,8 @@ const MAX_PRINTS = 5;
 
 interface Cota {
   pro: boolean;
+  /** Pro só pelo teste grátis (cota menor) */
+  teste?: boolean;
   usados: number;
   limite: number;
   restantes: number;
@@ -550,6 +552,16 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
             Assinar o Pro
           </button>
         </div>
+      ) : esgotado && cota!.teste ? (
+        <div className="rounded-lg border border-dashed border-accent/50 px-4 py-4">
+          <div className="mb-1 flex items-center gap-2 font-semibold">
+            <ProTag /> Você usou os {cota!.limite} prints do teste grátis
+          </div>
+          <p className="mb-3 text-muted">Assinando o Pro são 100 prints por mês, até 5 por vez.</p>
+          <button onClick={upgrade} className="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink">
+            Assinar o Pro
+          </button>
+        </div>
       ) : esgotado ? (
         <p className="rounded-md bg-warn-soft px-3 py-2">
           Você usou os {cota!.limite} prints dos últimos 30 dias.{libera ? ` Volta a ter prints em ${libera}.` : ''} Enquanto isso, use a planilha ou registre pela ⚡ Oferta
@@ -587,7 +599,10 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
             </button>
           </>
         )}
-        {cota?.pro && ` Prints restantes nos últimos 30 dias: ${restantes ?? cota.restantes} de ${cota.limite}.`}
+        {cota?.pro &&
+          (cota.teste
+            ? ` No teste grátis são ${cota.limite} prints (no Pro assinado, 100 por mês). Restam ${restantes ?? cota.restantes}.`
+            : ` Prints restantes nos últimos 30 dias: ${restantes ?? cota.restantes} de ${cota.limite}.`)}
       </p>
 
       {erro && (

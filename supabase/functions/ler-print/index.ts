@@ -47,18 +47,23 @@ const anthropic = DISPONIVEL ? new Anthropic() : null; // lê ANTHROPIC_API_KEY 
 
 /**
  * Limites em PRINTS (não em envios), numa janela móvel de 30 dias. Ver a conta de custo no README.
- * Pro: 100 prints/30 dias, até 5 por envio. Grátis: 1 print/30 dias.
+ * Pro: 100 prints/30 dias, até 5 por envio. Teste grátis de 7 dias: 15 prints (quem cria contas só
+ * para gastar a leitura não leva a cota cheia). Grátis: 1 print/30 dias.
  */
 const JANELA_MIN = 30 * 24 * 60;
 const LIMITES = {
   pro: { prints: 100, porEnvio: MAX_IMAGENS },
+  teste: { prints: 15, porEnvio: MAX_IMAGENS },
   gratis: { prints: 1, porEnvio: 1 },
 };
 
 /** Quantos prints a pessoa usou nos últimos 30 dias, quantos restam e, se acabou, quando volta a ter. */
 async function cota(db: ReturnType<typeof admin>, uid: string) {
   const { data: pro } = await db.rpc('is_pro_de', { uid });
-  const l = pro ? LIMITES.pro : LIMITES.gratis;
+  const { data: s } = await db.from('subscriptions').select('cortesia, current_period_end').eq('user_id', uid).maybeSingle();
+  // Pro só pelo teste (sem pagamento nem cortesia)
+  const teste = !!pro && !s?.cortesia && !(s?.current_period_end && new Date(s.current_period_end) > new Date());
+  const l = !pro ? LIMITES.gratis : teste ? LIMITES.teste : LIMITES.pro;
   const desde = new Date(Date.now() - JANELA_MIN * 60_000).toISOString();
   const { data: linhas, error } = await db
     .from('auditoria')
@@ -74,7 +79,7 @@ async function cota(db: ReturnType<typeof admin>, uid: string) {
   const restantes = Math.max(0, l.prints - usados);
   // Se acabou: libera quando o envio mais antigo sair da janela de 30 dias
   const liberaEm = restantes === 0 && envios.length ? new Date(new Date(envios[0].em).getTime() + JANELA_MIN * 60_000).toISOString() : null;
-  return { pro: !!pro, usados, limite: l.prints, restantes, printsPorEnvio: Math.min(l.porEnvio, restantes), liberaEm };
+  return { pro: !!pro, teste, usados, limite: l.prints, restantes, printsPorEnvio: Math.min(l.porEnvio, restantes), liberaEm };
 }
 
 Deno.serve(async (req) => {
@@ -115,7 +120,9 @@ Deno.serve(async (req) => {
     return json(
       req,
       {
-        error: c.pro
+        error: c.teste
+          ? `Você usou os ${c.limite} prints do teste grátis. Assinando o Pro são 100 prints por mês.`
+          : c.pro
           ? `Você usou os ${c.limite} prints dos últimos 30 dias${quando ? `; volta a ter prints em ${quando}` : ''}.`
           : `Você já usou o print grátis destes 30 dias${quando ? `; o próximo libera em ${quando}` : ''}. No Pro são 100 prints por mês.`,
       },

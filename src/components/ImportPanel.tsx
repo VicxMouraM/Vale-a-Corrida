@@ -469,7 +469,7 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
     };
   };
   useEffect(consultar, [auth.user]); // eslint-disable-line react-hooks/exhaustive-deps
-  const porEnvio = cota?.printsPorEnvio ?? (plan.pro ? MAX_PRINTS : 1);
+  const porEnvio = Math.max(1, cota?.printsPorEnvio ?? (plan.pro ? MAX_PRINTS : 1));
 
   const pronto = useMemo(() => (linhas ? corridasDeRascunhos(linhas, s, plataforma, existentes) : null), [linhas, s, plataforma, existentes]);
   const incompletas = linhas ? linhas.filter((l) => l.incluir && faltaNoRascunho(l).length > 0).length : 0;
@@ -545,13 +545,16 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
           <div className="mb-1 flex items-center gap-2 font-semibold">
             <ProTag /> Você já usou o print grátis destes 30 dias
           </div>
-          <p className="mb-3 text-muted">{libera ? `O próximo libera em ${libera}. ` : ''}No Pro, você importa até 5 prints por vez, 40 vezes por dia.</p>
+          <p className="mb-3 text-muted">{libera ? `O próximo libera em ${libera}. ` : ''}No Pro são 100 prints por mês, até 5 por vez.</p>
           <button onClick={upgrade} className="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink">
             Assinar o Pro
           </button>
         </div>
       ) : esgotado ? (
-        <p className="rounded-md bg-warn-soft px-3 py-2">Você chegou ao limite de 40 envios de prints hoje. Volte amanhã.</p>
+        <p className="rounded-md bg-warn-soft px-3 py-2">
+          Você usou os {cota!.limite} prints dos últimos 30 dias.{libera ? ` Volta a ter prints em ${libera}.` : ''} Enquanto isso, use a planilha ou registre pela ⚡ Oferta
+          rápida.
+        </p>
       ) : (
         <label className={`cursor-pointer rounded-lg border-2 border-dashed border-line px-4 py-6 text-center font-semibold hover:bg-sunk ${lendo ? 'pointer-events-none opacity-60' : ''}`}>
           {lendo
@@ -580,11 +583,11 @@ function PrintsImport({ s, plataforma, existentes, onImport }: { s: Settings; pl
             {' '}
             No plano Grátis é <strong>1 print a cada 30 dias</strong>: escolha o print com mais corridas.{' '}
             <button className="font-semibold text-accent" onClick={upgrade}>
-              <ProTag /> libera até 5 por vez, 40 vezes por dia
+              <ProTag /> são 100 prints por mês
             </button>
           </>
         )}
-        {plan.pro && restantes !== null && ` Envios restantes hoje: ${restantes}.`}
+        {cota?.pro && ` Prints restantes nos últimos 30 dias: ${restantes ?? cota.restantes} de ${cota.limite}.`}
       </p>
 
       {erro && (

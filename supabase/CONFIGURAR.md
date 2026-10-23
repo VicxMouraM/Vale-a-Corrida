@@ -249,5 +249,13 @@ Aparecem só para quem não é Pro, na calculadora e no histórico, com a etique
    npx supabase secrets set ANTHROPIC_API_KEY='sk-ant-...' --project-ref SEU-PROJECT-REF
    npx supabase functions deploy ler-print --project-ref SEU-PROJECT-REF
    ```
-4. Limites por usuário (custo sob controle), decididos no servidor: **Grátis 1 print a cada 30 dias**; **Pro 40 envios por dia, até 5 prints cada**. Os prints são reduzidos no celular antes de enviar.
+4. Limites por usuário (custo sob controle), decididos no servidor e contados em prints numa janela de 30 dias: **Grátis 1 print**; **Pro 100 prints, até 5 por envio**. Os prints são reduzidos no celular antes de enviar.
+6. **Custo real:** cada leitura grava os tokens gastos na tabela `auditoria` (ação `ler_print_uso`). Para ver o custo médio por print:
+   ```sql
+   select count(*) leituras, sum((detalhes->>'imagens')::int) prints,
+          round(avg((detalhes->>'entrada')::numeric)) entrada_media, round(avg((detalhes->>'saida')::numeric)) saida_media,
+          round(sum((detalhes->>'entrada')::numeric * 4 + (detalhes->>'saida')::numeric * 20) / 1e6
+                / nullif(sum((detalhes->>'imagens')::int), 0), 4) as usd_por_print
+     from public.auditoria where acao = 'ler_print_uso';
+   ```
 5. Custo aproximado: alguns centavos de dólar por envio. Acompanhe em console.anthropic.com → Usage.

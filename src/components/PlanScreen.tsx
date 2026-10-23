@@ -15,7 +15,7 @@ const RECURSOS: { nome: string; gratis: string | boolean; pro: string | boolean 
   { nome: 'Metas da semana e do mês', gratis: false, pro: true },
   { nome: 'Gráficos e relatórios', gratis: false, pro: true },
   { nome: 'Exportar para Excel (CSV)', gratis: false, pro: true },
-  { nome: 'Importar corridas por print', gratis: '1 print a cada 30 dias', pro: 'até 5 por vez, 40 vezes por dia' },
+  { nome: 'Importar corridas por print', gratis: '1 por mês', pro: '100 por mês' },
   { nome: 'Sem anúncios', gratis: false, pro: true },
 ];
 

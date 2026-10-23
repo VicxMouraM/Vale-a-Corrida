@@ -27,6 +27,17 @@ Coisas que dependem de você, fora do código. Marque com `x` quando fizer.
 - [ ] **Supabase Pro (quando houver assinantes):** backups diários, sem pausa por inatividade e domínio próprio no login com Google. Avaliar criar o projeto já na região São Paulo.
 - [ ] **App Android com leitura automática das ofertas** (futuro): avaliar depois de ter usuários pagando.
 
+## 💸 Custo da leitura por print (decisão de 23/10/2026)
+
+| | Grátis | Pro |
+|---|---|---|
+| Prints a cada 30 dias | 1 | **100** |
+| Prints por envio | 1 | até 5 |
+
+**Estimativa** (Claude Opus 5.5, US$ 4/US$ 20 por milhão de tokens, US$ 1 = R$ 5,70): ~R$ 0,09 a 0,10 por print. No pior caso, um assinante que usa os 100 prints custa ~R$ 9, cerca de 19% dos R$ 48 líquidos da assinatura. Na prática, quase ninguém usa tudo.
+
+**Medir o custo real:** cada leitura grava os tokens em `auditoria` (ação `ler_print_uso`); a consulta pronta está em [supabase/CONFIGURAR.md](supabase/CONFIGURAR.md) (seção 9). Revisar o limite depois de algumas semanas de uso. Para baratear ~40x, testar o Claude Haiku 5.5 com prints reais antes de trocar.
+
 ## Como executar
 
 Pré-requisito: Node.js 18 ou mais novo.

@@ -366,8 +366,8 @@ function Shell({ plan, showPlan, onPlan, settings, setSettings, offer, setOffer,
           </>
         )}
         <footer className="mt-10 border-t border-line pt-4 text-center text-xs text-muted">
-          <a href="./como-calcular/" className="font-semibold text-accent underline-offset-2 hover:underline">
-            Como calcular o lucro de uma corrida
+          <a href="./guias/" className="font-semibold text-accent underline-offset-2 hover:underline">
+            Guias para motoristas
           </a>
           <span className="mx-2">·</span>
           <LegalLinks onOpen={onLegal} />

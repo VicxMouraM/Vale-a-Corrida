@@ -4,8 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="claude:viewport-fit-sides" content="cover" />
-    <title>Vale a Corrida?</title>
-    <meta name="description" content="Calcule o lucro real de cada corrida e entrega (Uber, 99, iFood, Lalamove e outras) com os custos do seu veículo." />
+    <title>Vale a Corrida? – Calculadora de lucro para motoristas de Uber, 99 e iFood</title>
+    <meta name="description" content="Descubra em segundos se a corrida compensa. Calcule o lucro real com combustível, manutenção e taxas. Para Uber, 99, iFood, Lalamove e outros apps. Grátis." />
+    <link rel="canonical" href="https://valeacorrida.app.br/" />
+    <meta property="og:site_name" content="Vale a Corrida?" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://valeacorrida.app.br/" />
+    <meta property="og:title" content="Vale a Corrida? – Calculadora de lucro para motoristas de aplicativo" />
+    <meta property="og:description" content="Descubra em segundos se a corrida compensa. Calcule o lucro real com combustível, manutenção e taxas. Grátis." />
+    <meta property="og:image" content="https://valeacorrida.app.br/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
     <meta name="theme-color" content="#145C8A" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="format-detection" content="telephone=no" />
@@ -19,9 +28,56 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" />
+    <!-- Dados para o Google mostrar o app nos resultados (não é código executado) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Vale a Corrida?",
+        "url": "https://valeacorrida.app.br/",
+        "description": "Calculadora de lucro real para motoristas e entregadores de aplicativo: combustível, manutenção, depreciação, custos fixos e taxas.",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Android, iOS, navegador",
+        "inLanguage": "pt-BR",
+        "offers": [
+          { "@type": "Offer", "name": "Grátis", "price": "0", "priceCurrency": "BRL" },
+          { "@type": "Offer", "name": "Pro", "price": "49.99", "priceCurrency": "BRL" }
+        ]
+      }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!--
+      Apresentação em texto para o Google e para quem abre sem JavaScript.
+      O app substitui este conteúdo assim que carrega (normalmente em uma fração de segundo).
+    -->
+    <div id="root">
+      <main style="max-width: 720px; margin: 0 auto; padding: 32px 16px; font-family: system-ui, sans-serif; line-height: 1.6">
+        <h1>Vale a Corrida? Calculadora de lucro para motoristas de aplicativo</h1>
+        <p>
+          Descubra em segundos se a corrida ou entrega compensa. Digite o valor da oferta e os quilômetros, e o app mostra o lucro real depois de combustível,
+          manutenção, depreciação, seguro, IPVA e taxas, com um semáforo: verde vale a pena, amarelo dá lucro abaixo da sua meta, vermelho dá prejuízo.
+        </p>
+        <h2>Para quem roda na Uber, 99, iFood, Lalamove, inDrive e outros</h2>
+        <p>
+          Cadastre o seu carro, moto ou utilitário pela tabela FIPE e escolha as plataformas em que trabalha. O app já preenche consumo, manutenção e
+          depreciação típicos do seu veículo, e você ajusta com os seus números.
+        </p>
+        <h2>Controle o lucro do dia, da semana e do mês</h2>
+        <p>
+          Registre as corridas aceitas e acompanhe quanto sobra de verdade, quanto separar para a manutenção e se você está batendo a meta. No plano Pro, compare
+          qual plataforma paga melhor por hora e por km.
+        </p>
+        <p>Grátis para começar. Funciona no celular como app, inclusive sem internet.</p>
+        <h2>Guias</h2>
+        <ul>
+          <li><a href="./como-calcular/">Como saber se uma corrida ou entrega vale a pena</a></li>
+          <li><a href="./custo-por-km/">Como calcular o custo por km do seu carro</a></li>
+          <li><a href="./uber-ou-99/">Uber ou 99: qual paga melhor?</a></li>
+        </ul>
+        <noscript><p><strong>Para usar a calculadora, ative o JavaScript no seu navegador.</strong></p></noscript>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
